@@ -17,6 +17,9 @@ aside .danger { border-color: #f2a19c; color: #ffd9d6; }
 .auth a { color: #164f63; cursor: pointer; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.wizard-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.wizard-tabs button { background: white; color: #164f63; border: 1px solid #b8c9d0; }
+.wizard-tabs button.active { background: #164f63; color: white; border-color: #164f63; }
 .danger-outline { background: white; color: #8a1f11; border: 1px solid #d9a29a; }
 .card, .panel, .metrics article { background: white; border: 1px solid #dfe4e8; border-radius: 8px; padding: 16px; }
 .panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
@@ -25,12 +28,18 @@ aside .danger { border-color: #f2a19c; color: #ffd9d6; }
 .field span { color: #46515c; font-size: 13px; font-weight: 650; line-height: 1.2; }
 .field.required > span::after { content: " *"; color: #c62828; font-weight: 800; }
 .field input, .field select { width: 100%; }
+.field.check { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
+.field.check input { width: auto; }
 .required-legend { color: #5f6b76; font-size: 13px; margin: 10px 0 0; }
 .required-legend span { color: #c62828; font-weight: 800; }
 .panel + .required-legend { background: white; border: 1px solid #dfe4e8; border-radius: 8px; padding: 10px 12px; }
 .certificate-panel { margin-bottom: 0; }
 .certificate-status { margin-top: 16px; }
 .certificate-status p { overflow-wrap: anywhere; }
+.table-wrap { overflow-x: auto; margin: 16px 0; background: white; border: 1px solid #dfe4e8; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; min-width: 720px; }
+th, td { padding: 10px 12px; border-bottom: 1px solid #edf1f4; text-align: left; vertical-align: top; }
+th { color: #46515c; font-size: 13px; background: #f8fafb; }
 .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .metrics span { display: block; color: #5f6b76; font-size: 13px; margin-bottom: 8px; }
 .metrics strong { font-size: 20px; }

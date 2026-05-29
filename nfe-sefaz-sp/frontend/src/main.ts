@@ -102,6 +102,8 @@ class CrudTitleComponent {
               <label class="field required"><span>Municipio</span><input [(ngModel)]="companyForm.cityName" name="cityName" required></label>
               <label class="field required"><span>UF</span><input [(ngModel)]="companyForm.uf" name="uf" required maxlength="2"></label>
               <label class="field required"><span>Natureza padrao</span><input [(ngModel)]="companyForm.defaultNatureOperation" name="defaultNatureOperation" required></label>
+              <label class="field required"><span>Indicador de presenca padrao</span><select [(ngModel)]="companyForm.defaultPresenceIndicator" name="defaultPresenceIndicator" required><option *ngFor="let option of presenceIndicatorOptions" [value]="option.code">{{ option.code }} - {{ option.label }}</option></select></label>
+              <label class="field required"><span>Tipo de emissao padrao</span><select [(ngModel)]="companyForm.defaultEmissionType" name="defaultEmissionType" required><option *ngFor="let option of emissionTypeOptions" [value]="option.code">{{ option.code }} - {{ option.label }}</option></select></label>
               <button>Cadastrar empresa</button>
             </form>
             <p class="required-legend"><span aria-hidden="true">*</span> campo obrigatorio</p>
@@ -155,7 +157,85 @@ class CrudTitleComponent {
           <section *ngSwitchCase="'customers'"><crud-title title="Clientes"></crud-title><button (click)="load('/customers')">Carregar clientes</button><pre>{{ rows | json }}</pre></section>
           <section *ngSwitchCase="'products'"><crud-title title="Produtos"></crud-title><button (click)="load('/products')">Carregar produtos</button><pre>{{ rows | json }}</pre></section>
           <section *ngSwitchCase="'taxRules'"><h1>Regras fiscais do produto</h1><p>Cadastre CFOP, CST/CSOSN, ICMS, IPI, PIS e COFINS por UF, operacao e regime.</p></section>
-          <section *ngSwitchCase="'nfe'"><h1>NF-e</h1><button (click)="createNfe()">Criar rascunho</button><button (click)="load('/nfe')">Listar NF-e</button><pre>{{ rows | json }}</pre></section>
+          <section *ngSwitchCase="'nfe'">
+            <h1>NF-e</h1>
+            <div class="wizard-tabs">
+              <button [class.active]="nfeStep === 1" (click)="nfeStep = 1">1. Dados gerais</button>
+              <button [class.active]="nfeStep === 2" (click)="nfeStep = 2">2. Itens</button>
+              <button [class.active]="nfeStep === 3" (click)="nfeStep = 3">3. Revisao</button>
+            </div>
+
+            <section class="panel" *ngIf="nfeStep === 1">
+              <h2>Dados gerais</h2>
+              <label class="field required"><span>Natureza da operacao</span><input [(ngModel)]="nfeForm.natureOperation" name="natureOperation" required></label>
+              <label class="field required"><span>Tipo de operacao</span><select [(ngModel)]="nfeForm.operationType" name="operationType" required><option>SAIDA</option><option>ENTRADA</option></select></label>
+              <label class="field required"><span>Destino</span><select [(ngModel)]="nfeForm.destinationType" name="destinationType" required><option>INTERNA</option><option>INTERESTADUAL</option><option>EXTERIOR</option></select></label>
+              <label class="field required"><span>Finalidade</span><select [(ngModel)]="nfeForm.purpose" name="purpose" required><option>NORMAL</option><option>COMPLEMENTAR</option><option>AJUSTE</option><option>DEVOLUCAO</option></select></label>
+              <label class="field required"><span>Indicador de presenca</span><select [(ngModel)]="nfeForm.presenceIndicator" name="presenceIndicator" required><option *ngFor="let option of presenceIndicatorOptions" [value]="option.code">{{ option.code }} - {{ option.label }}</option></select></label>
+              <label class="field required"><span>Tipo de emissao</span><select [(ngModel)]="nfeForm.emissionType" name="emissionType" required><option *ngFor="let option of emissionTypeOptions" [value]="option.code">{{ option.code }} - {{ option.label }}</option></select></label>
+              <button type="button" (click)="nfeStep = 2">Avancar para itens</button>
+            </section>
+
+            <section *ngIf="nfeStep === 2">
+              <form class="panel" (ngSubmit)="addNfeItem()">
+                <h2>Adicionar item</h2>
+                <label class="field required"><span>Codigo</span><input [(ngModel)]="nfeItemForm.productCode" name="productCode" required></label>
+                <label class="field required"><span>Descricao</span><input [(ngModel)]="nfeItemForm.description" name="description" required></label>
+                <label class="field required"><span>NCM</span><input [(ngModel)]="nfeItemForm.ncm" name="ncm" required></label>
+                <label class="field required"><span>CFOP</span><input [(ngModel)]="nfeItemForm.cfop" name="cfop" required></label>
+                <label class="field required"><span>Unidade comercial</span><input [(ngModel)]="nfeItemForm.commercialUnit" name="commercialUnit" required></label>
+                <label class="field required"><span>Quantidade</span><input [(ngModel)]="nfeItemForm.commercialQuantity" name="commercialQuantity" type="number" step="0.0001" required></label>
+                <label class="field required"><span>Valor unitario</span><input [(ngModel)]="nfeItemForm.commercialUnitValue" name="commercialUnitValue" type="number" step="0.0001" required></label>
+                <label class="field"><span>Frete</span><input [(ngModel)]="nfeItemForm.freightValue" name="freightValue" type="number" step="0.01"></label>
+                <label class="field"><span>Seguro</span><input [(ngModel)]="nfeItemForm.insuranceValue" name="insuranceValue" type="number" step="0.01"></label>
+                <label class="field"><span>Desconto</span><input [(ngModel)]="nfeItemForm.discountValue" name="discountValue" type="number" step="0.01"></label>
+                <label class="field"><span>Outras despesas</span><input [(ngModel)]="nfeItemForm.otherExpenses" name="otherExpenses" type="number" step="0.01"></label>
+                <label class="field"><span>ICMS</span><input [(ngModel)]="nfeItemForm.icmsValue" name="icmsValue" type="number" step="0.01"></label>
+                <label class="field"><span>IPI</span><input [(ngModel)]="nfeItemForm.ipiValue" name="ipiValue" type="number" step="0.01"></label>
+                <label class="field"><span>PIS</span><input [(ngModel)]="nfeItemForm.pisValue" name="pisValue" type="number" step="0.01"></label>
+                <label class="field"><span>COFINS</span><input [(ngModel)]="nfeItemForm.cofinsValue" name="cofinsValue" type="number" step="0.01"></label>
+                <label class="field check"><input [(ngModel)]="nfeItemForm.includeInTotal" name="includeInTotal" type="checkbox"><span>Compoe total da NF-e</span></label>
+                <button>Adicionar item</button>
+              </form>
+              <p class="required-legend"><span aria-hidden="true">*</span> campo obrigatorio</p>
+
+              <div class="table-wrap" *ngIf="nfeItems.length">
+                <table>
+                  <thead><tr><th>#</th><th>Codigo</th><th>Descricao</th><th>NCM</th><th>CFOP</th><th>Total</th><th></th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let item of nfeItems; let i = index">
+                      <td>{{ i + 1 }}</td>
+                      <td>{{ item.productCode }}</td>
+                      <td>{{ item.description }}</td>
+                      <td>{{ item.ncm }}</td>
+                      <td>{{ item.cfop }}</td>
+                      <td>{{ item.grossTotal | currency:'BRL' }}</td>
+                      <td><button class="danger-outline" (click)="removeNfeItem(i)">Remover</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" (click)="nfeStep = 3" [disabled]="!nfeItems.length">Revisar totais</button>
+            </section>
+
+            <section *ngIf="nfeStep === 3">
+              <h2>Revisao e totais</h2>
+              <div class="metrics">
+                <article><span>Produtos</span><strong>{{ nfeTotals.products | currency:'BRL' }}</strong></article>
+                <article><span>Frete</span><strong>{{ nfeTotals.freight | currency:'BRL' }}</strong></article>
+                <article><span>Seguro</span><strong>{{ nfeTotals.insurance | currency:'BRL' }}</strong></article>
+                <article><span>Desconto</span><strong>{{ nfeTotals.discount | currency:'BRL' }}</strong></article>
+                <article><span>Outras despesas</span><strong>{{ nfeTotals.other | currency:'BRL' }}</strong></article>
+                <article><span>IPI</span><strong>{{ nfeTotals.ipi | currency:'BRL' }}</strong></article>
+                <article><span>Total NF-e</span><strong>{{ nfeTotals.invoice | currency:'BRL' }}</strong></article>
+              </div>
+              <div class="toolbar">
+                <button (click)="submitNfeWizard()" [disabled]="!nfeItems.length">Criar rascunho com itens</button>
+                <button (click)="load('/nfe')">Listar NF-e</button>
+              </div>
+              <pre>{{ rows | json }}</pre>
+            </section>
+          </section>
           <section *ngSwitchCase="'logs'"><h1>Logs SEFAZ</h1><button (click)="load('/sefaz-logs')">Carregar</button><pre>{{ rows | json }}</pre></section>
           <section *ngSwitchCase="'audit'"><h1>Auditoria</h1><button (click)="load('/audit-logs')">Carregar</button><pre>{{ rows | json }}</pre></section>
         </ng-container>
@@ -186,6 +266,36 @@ class AppComponent {
   certificatePassword = '';
   certificateStatus: any = null;
   certificateMessage = '';
+  presenceIndicatorOptions = [
+    { code: '0', label: 'Nao se aplica' },
+    { code: '1', label: 'Operacao presencial' },
+    { code: '2', label: 'Operacao pela internet' },
+    { code: '3', label: 'Operacao por teleatendimento' },
+    { code: '4', label: 'NFC-e com entrega em domicilio' },
+    { code: '5', label: 'Operacao presencial fora do estabelecimento' },
+    { code: '9', label: 'Outros' }
+  ];
+  emissionTypeOptions = [
+    { code: '1', label: 'Emissao normal' },
+    { code: '2', label: 'Contingencia FS-IA' },
+    { code: '4', label: 'Contingencia EPEC' },
+    { code: '5', label: 'Contingencia FS-DA' },
+    { code: '6', label: 'Contingencia SVC-AN' },
+    { code: '7', label: 'Contingencia SVC-RS' },
+    { code: '9', label: 'Contingencia off-line NFC-e' }
+  ];
+  nfeStep = 1;
+  nfeForm: any = {
+    natureOperation: '',
+    operationType: 'SAIDA',
+    destinationType: 'INTERNA',
+    purpose: 'NORMAL',
+    presenceIndicator: '9',
+    emissionType: '1'
+  };
+  nfeItemForm: any = this.emptyNfeItem();
+  nfeItems: any[] = [];
+  nfeTotals = this.calculateNfeTotals();
   authForm = { name: '', email: '', password: '' };
   companyForm: any = {
     taxRegime: 'SIMPLES_NACIONAL', countryCode: '1058', countryName: 'Brasil',
@@ -230,6 +340,104 @@ class AppComponent {
     const company = this.api.company();
     if (!company) return;
     this.api.post(`/api/companies/${company.id}/nfe`, { natureOperation: company.defaultNatureOperation }).subscribe(() => this.load('/nfe'));
+  }
+
+  emptyNfeItem() {
+    return {
+      productCode: '',
+      description: '',
+      ncm: '',
+      cfop: '',
+      commercialUnit: 'UN',
+      commercialQuantity: 1,
+      commercialUnitValue: 0,
+      freightValue: 0,
+      insuranceValue: 0,
+      discountValue: 0,
+      otherExpenses: 0,
+      icmsValue: 0,
+      ipiValue: 0,
+      pisValue: 0,
+      cofinsValue: 0,
+      includeInTotal: true
+    };
+  }
+
+  addNfeItem() {
+    const quantity = this.number(this.nfeItemForm.commercialQuantity);
+    const unitValue = this.number(this.nfeItemForm.commercialUnitValue);
+    if (!this.nfeItemForm.productCode || !this.nfeItemForm.description || !this.nfeItemForm.ncm || !this.nfeItemForm.cfop || quantity <= 0 || unitValue <= 0) {
+      return;
+    }
+    const item = {
+      ...this.nfeItemForm,
+      commercialQuantity: quantity,
+      commercialUnitValue: unitValue,
+      grossTotal: this.money(quantity * unitValue),
+      taxableUnit: this.nfeItemForm.commercialUnit,
+      taxableQuantity: quantity,
+      taxableUnitValue: unitValue,
+      freightValue: this.money(this.nfeItemForm.freightValue),
+      insuranceValue: this.money(this.nfeItemForm.insuranceValue),
+      discountValue: this.money(this.nfeItemForm.discountValue),
+      otherExpenses: this.money(this.nfeItemForm.otherExpenses),
+      icmsValue: this.money(this.nfeItemForm.icmsValue),
+      ipiValue: this.money(this.nfeItemForm.ipiValue),
+      pisValue: this.money(this.nfeItemForm.pisValue),
+      cofinsValue: this.money(this.nfeItemForm.cofinsValue)
+    };
+    this.nfeItems = [...this.nfeItems, item];
+    this.nfeItemForm = this.emptyNfeItem();
+    this.nfeTotals = this.calculateNfeTotals();
+  }
+
+  removeNfeItem(index: number) {
+    this.nfeItems = this.nfeItems.filter((_, i) => i !== index);
+    this.nfeTotals = this.calculateNfeTotals();
+  }
+
+  calculateNfeTotals() {
+    const totals = this.nfeItems.reduce((acc, item) => {
+      if (item.includeInTotal !== false) acc.products += this.number(item.grossTotal);
+      acc.freight += this.number(item.freightValue);
+      acc.insurance += this.number(item.insuranceValue);
+      acc.discount += this.number(item.discountValue);
+      acc.other += this.number(item.otherExpenses);
+      acc.icms += this.number(item.icmsValue);
+      acc.ipi += this.number(item.ipiValue);
+      acc.pis += this.number(item.pisValue);
+      acc.cofins += this.number(item.cofinsValue);
+      return acc;
+    }, { products: 0, freight: 0, insurance: 0, discount: 0, other: 0, icms: 0, ipi: 0, pis: 0, cofins: 0, invoice: 0 });
+    totals.invoice = this.money(totals.products + totals.freight + totals.insurance + totals.other + totals.ipi - totals.discount);
+    Object.keys(totals).forEach(key => totals[key] = this.money(totals[key]));
+    return totals;
+  }
+
+  submitNfeWizard() {
+    const company = this.api.company();
+    if (!company || !this.nfeItems.length) return;
+    const payload = {
+      ...this.nfeForm,
+      natureOperation: this.nfeForm.natureOperation || company.defaultNatureOperation,
+      items: this.nfeItems
+    };
+    this.api.post(`/api/companies/${company.id}/nfe`, payload).subscribe(created => {
+      this.rows = [created];
+      this.nfeItems = [];
+      this.nfeTotals = this.calculateNfeTotals();
+      this.nfeItemForm = this.emptyNfeItem();
+      this.nfeStep = 1;
+    });
+  }
+
+  number(value: any) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  money(value: any) {
+    return Math.round(this.number(value) * 100) / 100;
   }
 
   selectCertificateFile(file: File | null) {

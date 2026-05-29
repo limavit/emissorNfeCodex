@@ -1,6 +1,7 @@
 package br.com.nfesefassp.controller;
 
 import br.com.nfesefassp.model.NFe;
+import br.com.nfesefassp.model.NFeDetailResponse;
 import br.com.nfesefassp.model.NFeRequest;
 import br.com.nfesefassp.service.NFeService;
 import java.util.List;
@@ -34,8 +35,8 @@ public class NFeController {
     }
 
     @GetMapping("/{id}")
-    public NFe get(@PathVariable UUID companyId, @PathVariable UUID id) {
-        return service.get(companyId, id);
+    public NFeDetailResponse get(@PathVariable UUID companyId, @PathVariable UUID id) {
+        return service.detail(companyId, id);
     }
 
     @PostMapping("/{id}/validate")

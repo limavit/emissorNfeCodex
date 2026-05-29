@@ -45,6 +45,22 @@ public class NFe {
     private String sefazStatusReason;
     @Column(name = "total_products")
     private BigDecimal totalProducts = BigDecimal.ZERO;
+    @Column(name = "total_icms")
+    private BigDecimal totalIcms = BigDecimal.ZERO;
+    @Column(name = "total_ipi")
+    private BigDecimal totalIpi = BigDecimal.ZERO;
+    @Column(name = "total_pis")
+    private BigDecimal totalPis = BigDecimal.ZERO;
+    @Column(name = "total_cofins")
+    private BigDecimal totalCofins = BigDecimal.ZERO;
+    @Column(name = "total_freight")
+    private BigDecimal totalFreight = BigDecimal.ZERO;
+    @Column(name = "total_insurance")
+    private BigDecimal totalInsurance = BigDecimal.ZERO;
+    @Column(name = "total_discount")
+    private BigDecimal totalDiscount = BigDecimal.ZERO;
+    @Column(name = "total_other_expenses")
+    private BigDecimal totalOtherExpenses = BigDecimal.ZERO;
     @Column(name = "total_invoice")
     private BigDecimal totalInvoice = BigDecimal.ZERO;
     @Column(name = "created_at")
@@ -83,6 +99,20 @@ public class NFe {
         this.updatedAt = OffsetDateTime.now();
     }
 
+    public void applyTotals(br.com.nfesefassp.service.NFeCalculationService.Totals totals) {
+        this.totalProducts = totals.products();
+        this.totalFreight = totals.freight();
+        this.totalInsurance = totals.insurance();
+        this.totalDiscount = totals.discount();
+        this.totalOtherExpenses = totals.other();
+        this.totalIcms = totals.icms();
+        this.totalIpi = totals.ipi();
+        this.totalPis = totals.pis();
+        this.totalCofins = totals.cofins();
+        this.totalInvoice = totals.invoice();
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     private static String valueOrDefault(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
     }
@@ -105,5 +135,13 @@ public class NFe {
     public String getSefazStatusCode() { return sefazStatusCode; }
     public String getSefazStatusReason() { return sefazStatusReason; }
     public BigDecimal getTotalProducts() { return totalProducts; }
+    public BigDecimal getTotalIcms() { return totalIcms; }
+    public BigDecimal getTotalIpi() { return totalIpi; }
+    public BigDecimal getTotalPis() { return totalPis; }
+    public BigDecimal getTotalCofins() { return totalCofins; }
+    public BigDecimal getTotalFreight() { return totalFreight; }
+    public BigDecimal getTotalInsurance() { return totalInsurance; }
+    public BigDecimal getTotalDiscount() { return totalDiscount; }
+    public BigDecimal getTotalOtherExpenses() { return totalOtherExpenses; }
     public BigDecimal getTotalInvoice() { return totalInvoice; }
 }

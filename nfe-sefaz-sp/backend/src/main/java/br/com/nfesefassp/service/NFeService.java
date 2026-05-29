@@ -2,9 +2,12 @@ package br.com.nfesefassp.service;
 
 import br.com.nfesefassp.model.Company;
 import br.com.nfesefassp.model.NFe;
+import br.com.nfesefassp.model.NFeDetailResponse;
+import br.com.nfesefassp.model.NFeItem;
 import br.com.nfesefassp.model.NFeRequest;
 import br.com.nfesefassp.model.NFeStatus;
 import br.com.nfesefassp.repository.CompanyRepository;
+import br.com.nfesefassp.repository.NFeItemRepository;
 import br.com.nfesefassp.repository.NFeRepository;
 import br.com.nfesefassp.util.AccessKeyService;
 import java.time.OffsetDateTime;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NFeService {
     private final NFeRepository nfes;
+    private final NFeItemRepository nfeItems;
     private final CompanyRepository companies;
     private final JdbcTemplate jdbc;
     private final AccessKeyService accessKeyService;
@@ -30,14 +34,16 @@ public class NFeService {
     private final NFeInutilizationService inutilizationService;
     private final DanfeService danfeService;
     private final StorageService storageService;
+    private final NFeCalculationService calculationService;
 
-    public NFeService(NFeRepository nfes, CompanyRepository companies, JdbcTemplate jdbc,
+    public NFeService(NFeRepository nfes, NFeItemRepository nfeItems, CompanyRepository companies, JdbcTemplate jdbc,
                       AccessKeyService accessKeyService, NFeXmlBuilderService xmlBuilder,
                       NFeXmlValidationService xmlValidation, NFeSignatureService signatureService,
                       NFeTransmissionService transmissionService, NFeStatusService statusService,
                       NFeEventService eventService, NFeInutilizationService inutilizationService,
-                      DanfeService danfeService, StorageService storageService) {
+                      DanfeService danfeService, StorageService storageService, NFeCalculationService calculationService) {
         this.nfes = nfes;
+        this.nfeItems = nfeItems;
         this.companies = companies;
         this.jdbc = jdbc;
         this.accessKeyService = accessKeyService;
@@ -50,6 +56,7 @@ public class NFeService {
         this.inutilizationService = inutilizationService;
         this.danfeService = danfeService;
         this.storageService = storageService;
+        this.calculationService = calculationService;
     }
 
     public List<NFe> list(UUID companyId) {
@@ -61,6 +68,11 @@ public class NFeService {
                 .orElseThrow(() -> new IllegalArgumentException("NF-e nao encontrada."));
     }
 
+    public NFeDetailResponse detail(UUID companyId, UUID id) {
+        NFe nfe = get(companyId, id);
+        return new NFeDetailResponse(nfe, nfeItems.findByNfeIdOrderByItemNumber(id));
+    }
+
     @Transactional
     public NFe create(UUID companyId, NFeRequest request) {
         Company company = companies.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Empresa nao encontrada."));
@@ -69,6 +81,7 @@ public class NFeService {
         String key = accessKeyService.generate("35", OffsetDateTime.now(), company.getCnpj(), "55", series, number, "1",
                 10000000 + (int) (number % 89999999));
         NFe nfe = nfes.save(NFe.draft(companyId, request, company, key));
+        replaceItems(nfe, request);
         company.incrementNextNfeNumber();
         return nfe;
     }
@@ -78,6 +91,9 @@ public class NFeService {
         NFe nfe = get(companyId, id);
         if (!NFeStatus.RASCUNHO.name().equals(nfe.getStatus()) && !NFeStatus.REJEITADA.name().equals(nfe.getStatus())) {
             throw new IllegalStateException("NF-e nao esta em status editavel.");
+        }
+        if (nfeItems.countByNfeId(id) == 0) {
+            throw new IllegalStateException("Inclua ao menos um item antes de validar a NF-e.");
         }
         nfe.markStatus(NFeStatus.VALIDADA);
         return Map.of("status", NFeStatus.VALIDADA.name());
@@ -143,5 +159,20 @@ public class NFeService {
 
     public List<Map<String, Object>> inutilizations(UUID companyId) {
         return jdbc.queryForList("select * from nfe_events where company_id = ? and event_type = 'INUTILIZACAO'", companyId);
+    }
+
+    private void replaceItems(NFe nfe, NFeRequest request) {
+        nfeItems.deleteByNfeId(nfe.getId());
+        if (request.items() == null || request.items().isEmpty()) {
+            nfe.applyTotals(calculationService.calculate(List.of()));
+            return;
+        }
+        List<NFeItem> items = new java.util.ArrayList<>();
+        int itemNumber = 1;
+        for (var itemRequest : request.items()) {
+            items.add(NFeItem.from(nfe.getId(), itemNumber++, itemRequest));
+        }
+        nfeItems.saveAll(items);
+        nfe.applyTotals(calculationService.calculate(items.stream().map(NFeItem::toCalculationItem).toList()));
     }
 }

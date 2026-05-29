@@ -1,5 +1,6 @@
 package br.com.nfesefassp.model;
 
+import java.util.List;
 import java.util.UUID;
 
 public record NFeRequest(
@@ -9,5 +10,6 @@ public record NFeRequest(
         String destinationType,
         String purpose,
         String presenceIndicator,
-        String emissionType
+        String emissionType,
+        List<NFeItemRequest> items
 ) {}
