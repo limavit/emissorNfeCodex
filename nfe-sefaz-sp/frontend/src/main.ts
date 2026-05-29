@@ -63,8 +63,8 @@ class CrudTitleComponent {
         <button (click)="screen='certificate'">Certificado</button>
         <button (click)="screen='customers'">Clientes</button>
         <button (click)="screen='products'">Produtos</button>
-        <button (click)="screen='taxRules'">Regras fiscais</button>
-        <button (click)="screen='nfe'">NF-e</button>
+        <button (click)="openTaxRuleScreen()">Regras fiscais</button>
+        <button (click)="openNfeScreen()">NF-e</button>
         <button (click)="screen='logs'">Logs</button>
         <button (click)="screen='audit'">Auditoria</button>
         <button class="danger" (click)="logout()">Sair</button>
@@ -435,7 +435,83 @@ class CrudTitleComponent {
               </table>
             </div>
           </section>
-          <section *ngSwitchCase="'taxRules'"><h1>Regras fiscais do produto</h1><p>Cadastre CFOP, CST/CSOSN, ICMS, IPI, PIS e COFINS por UF, operacao e regime.</p></section>
+          <section *ngSwitchCase="'taxRules'">
+            <h1>Regras fiscais do produto</h1>
+            <p class="notice">Cadastre CFOP, CST/CSOSN, ICMS, IPI, PIS e COFINS por produto, UF, operacao e regime. O sistema usa essas regras para preencher itens da NF-e, mas nao inventa tributacao.</p>
+            <div class="toolbar">
+              <button (click)="openNewTaxRule()">Nova regra fiscal</button>
+              <button class="secondary" (click)="loadProductsForTaxRules()">Carregar produtos</button>
+            </div>
+            <p class="notice" *ngIf="taxRuleMessage">{{ taxRuleMessage }}</p>
+
+            <label class="field product-selector">
+              <span>Produto para consultar regras</span>
+              <select [(ngModel)]="selectedTaxRuleProductId" name="selectedTaxRuleProductId" (change)="loadTaxRules()">
+                <option value="">Selecione um produto</option>
+                <option *ngFor="let product of productRows" [value]="product.id">{{ product.internalCode }} - {{ product.description }}</option>
+              </select>
+              <small>As regras fiscais ficam separadas por produto e por empresa.</small>
+            </label>
+
+            <form class="panel tax-rule-form" *ngIf="showTaxRuleForm" (ngSubmit)="createTaxRule()">
+              <h2>Nova regra fiscal</h2>
+              <label class="field required">
+                <span>Produto</span>
+                <select [(ngModel)]="taxRuleForm.productId" name="taxRuleProductId" required>
+                  <option value="">Selecione</option>
+                  <option *ngFor="let product of productRows" [value]="product.id">{{ product.internalCode }} - {{ product.description }}</option>
+                </select>
+                <small>Produto ao qual esta regra fiscal pertence.</small>
+              </label>
+              <label class="field required"><span>UF origem</span><select [(ngModel)]="taxRuleForm.ufOrigin" name="taxRuleUfOrigin" required><option *ngFor="let uf of ufOptions" [value]="uf">{{ uf }}</option></select><small>UF da empresa emissora.</small></label>
+              <label class="field required"><span>UF destino</span><select [(ngModel)]="taxRuleForm.ufDestination" name="taxRuleUfDestination" required><option *ngFor="let uf of ufOptions" [value]="uf">{{ uf }}</option></select><small>UF do cliente destinatario.</small></label>
+              <label class="field required"><span>Tipo de operacao</span><select [(ngModel)]="taxRuleForm.operationType" name="taxRuleOperationType" required><option *ngFor="let option of operationTypeOptions" [value]="option.code">{{ option.label }}</option></select><small>Tipo fiscal/comercial da operacao.</small></label>
+              <label class="field required"><span>Regime tributario</span><select [(ngModel)]="taxRuleForm.taxRegime" name="taxRuleTaxRegime" required><option>SIMPLES_NACIONAL</option><option>REGIME_NORMAL</option></select><small>Regime da empresa para aplicar CST ou CSOSN corretamente.</small></label>
+              <label class="field required"><span>CFOP</span><input [(ngModel)]="taxRuleForm.cfop" name="taxRuleCfop" required maxlength="4"><small>Codigo fiscal da operacao. Ex.: venda interna, interestadual ou devolucao.</small></label>
+              <label class="field"><span>CST ICMS</span><input [(ngModel)]="taxRuleForm.icmsCst" name="taxRuleIcmsCst" maxlength="3"><small>Use para regime normal, quando aplicavel.</small></label>
+              <label class="field"><span>CSOSN</span><input [(ngModel)]="taxRuleForm.icmsCsosn" name="taxRuleIcmsCsosn" maxlength="4"><small>Use para Simples Nacional, quando aplicavel.</small></label>
+              <label class="field"><span>Modalidade BC ICMS</span><input [(ngModel)]="taxRuleForm.icmsModBc" name="taxRuleIcmsModBc" maxlength="2"><small>Modalidade de determinacao da base de calculo do ICMS.</small></label>
+              <label class="field"><span>Aliquota ICMS (%)</span><input [(ngModel)]="taxRuleForm.icmsRate" name="taxRuleIcmsRate" type="number" step="0.0001"><small>Percentual usado para calcular ICMS do item.</small></label>
+              <label class="field"><span>Reducao BC ICMS (%)</span><input [(ngModel)]="taxRuleForm.icmsBaseReduction" name="taxRuleIcmsBaseReduction" type="number" step="0.0001"><small>Percentual de reducao de base, quando houver.</small></label>
+              <label class="field"><span>FCP (%)</span><input [(ngModel)]="taxRuleForm.fcpRate" name="taxRuleFcpRate" type="number" step="0.0001"><small>Percentual do Fundo de Combate a Pobreza, quando aplicavel.</small></label>
+              <label class="field"><span>CST IPI</span><input [(ngModel)]="taxRuleForm.ipiCst" name="taxRuleIpiCst" maxlength="2"><small>CST do IPI quando o produto tiver incidencia.</small></label>
+              <label class="field"><span>Aliquota IPI (%)</span><input [(ngModel)]="taxRuleForm.ipiRate" name="taxRuleIpiRate" type="number" step="0.0001"><small>Percentual do IPI.</small></label>
+              <label class="field"><span>Enquadramento IPI</span><input [(ngModel)]="taxRuleForm.ipiEnquadramento" name="taxRuleIpiEnquadramento" maxlength="5"><small>Codigo de enquadramento do IPI, quando exigido.</small></label>
+              <label class="field"><span>CST PIS</span><input [(ngModel)]="taxRuleForm.pisCst" name="taxRulePisCst" maxlength="2"><small>CST do PIS.</small></label>
+              <label class="field"><span>Aliquota PIS (%)</span><input [(ngModel)]="taxRuleForm.pisRate" name="taxRulePisRate" type="number" step="0.0001"><small>Percentual do PIS.</small></label>
+              <label class="field"><span>Calculo PIS</span><select [(ngModel)]="taxRuleForm.pisCalculationType" name="taxRulePisCalculationType"><option value="">Selecione</option><option>PERCENTUAL</option><option>VALOR_POR_QUANTIDADE</option></select><small>Forma de calculo do PIS.</small></label>
+              <label class="field"><span>CST COFINS</span><input [(ngModel)]="taxRuleForm.cofinsCst" name="taxRuleCofinsCst" maxlength="2"><small>CST da COFINS.</small></label>
+              <label class="field"><span>Aliquota COFINS (%)</span><input [(ngModel)]="taxRuleForm.cofinsRate" name="taxRuleCofinsRate" type="number" step="0.0001"><small>Percentual da COFINS.</small></label>
+              <label class="field"><span>Calculo COFINS</span><select [(ngModel)]="taxRuleForm.cofinsCalculationType" name="taxRuleCofinsCalculationType"><option value="">Selecione</option><option>PERCENTUAL</option><option>VALOR_POR_QUANTIDADE</option></select><small>Forma de calculo da COFINS.</small></label>
+              <label class="field"><span>Beneficio fiscal</span><input [(ngModel)]="taxRuleForm.benefitCode" name="taxRuleBenefitCode"><small>Codigo de beneficio fiscal, quando exigido pela UF.</small></label>
+              <label class="field required"><span>Vigencia inicial</span><input [(ngModel)]="taxRuleForm.validFrom" name="taxRuleValidFrom" type="date" required><small>Data a partir da qual a regra pode ser usada.</small></label>
+              <label class="field"><span>Vigencia final</span><input [(ngModel)]="taxRuleForm.validUntil" name="taxRuleValidUntil" type="date"><small>Deixe em branco para regra sem fim definido.</small></label>
+              <label class="field check"><input [(ngModel)]="taxRuleForm.active" name="taxRuleActive" type="checkbox"><span>Regra ativa</span><small>Regras inativas nao devem ser usadas em novas NF-e.</small></label>
+              <div class="form-actions">
+                <button>Salvar regra fiscal</button>
+                <button type="button" class="secondary" (click)="showTaxRuleForm = false">Cancelar</button>
+              </div>
+            </form>
+            <p class="required-legend" *ngIf="showTaxRuleForm"><span aria-hidden="true">*</span> campo obrigatorio</p>
+
+            <div class="table-wrap" *ngIf="taxRuleRows.length">
+              <table>
+                <thead><tr><th>Produto</th><th>UF</th><th>Operacao</th><th>CFOP</th><th>ICMS</th><th>PIS/COFINS</th><th>Vigencia</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let rule of taxRuleRows">
+                    <td>{{ productLabel(rule.productId) }}</td>
+                    <td>{{ rule.ufOrigin }} -> {{ rule.ufDestination }}</td>
+                    <td>{{ rule.operationType }}<br><span class="muted">{{ rule.taxRegime }}</span></td>
+                    <td>{{ rule.cfop }}</td>
+                    <td>CST {{ rule.icmsCst || '-' }} / CSOSN {{ rule.icmsCsosn || '-' }}<br><span class="muted">{{ rule.icmsRate || 0 }}%</span></td>
+                    <td>PIS {{ rule.pisCst || '-' }} {{ rule.pisRate || 0 }}%<br>COFINS {{ rule.cofinsCst || '-' }} {{ rule.cofinsRate || 0 }}%</td>
+                    <td>{{ rule.validFrom }}<br><span class="muted">{{ rule.validUntil || 'Sem fim' }}</span></td>
+                    <td>{{ rule.active ? 'Ativa' : 'Inativa' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
           <section *ngSwitchCase="'nfe'">
             <h1>NF-e</h1>
             <div class="wizard-tabs">
@@ -446,6 +522,14 @@ class CrudTitleComponent {
 
             <section class="panel" *ngIf="nfeStep === 1">
               <h2>Dados gerais</h2>
+              <label class="field required">
+                <span>Destinatario</span>
+                <select [(ngModel)]="nfeForm.customerId" name="nfeCustomerId" required>
+                  <option value="">Selecione um cliente</option>
+                  <option *ngFor="let customer of customerRows" [value]="customer.id">{{ customer.name }} - {{ customerDocument(customer) }}</option>
+                </select>
+                <small>Os dados do cliente selecionado serao vinculados ao rascunho da NF-e.</small>
+              </label>
               <label class="field required"><span>Natureza da operacao</span><input [(ngModel)]="nfeForm.natureOperation" name="natureOperation" required><small>Texto que resume a operacao fiscal. Ex.: Venda de mercadoria adquirida de terceiros.</small></label>
               <label class="field required"><span>Tipo de operacao</span><select [(ngModel)]="nfeForm.operationType" name="operationType" required><option>SAIDA</option><option>ENTRADA</option></select><small>Saida para venda/remessa; entrada para compras, devolucoes recebidas ou ajustes.</small></label>
               <label class="field required"><span>Destino</span><select [(ngModel)]="nfeForm.destinationType" name="destinationType" required><option>INTERNA</option><option>INTERESTADUAL</option><option>EXTERIOR</option></select><small>Compare a UF do emitente com a UF do destinatario.</small></label>
@@ -458,6 +542,16 @@ class CrudTitleComponent {
             <section *ngIf="nfeStep === 2">
               <form class="panel" (ngSubmit)="addNfeItem()">
                 <h2>Adicionar item</h2>
+                <label class="field required">
+                  <span>Produto cadastrado</span>
+                  <select [(ngModel)]="nfeItemForm.productId" name="nfeProductId" required (change)="applySelectedProductToNfeItem()">
+                    <option value="">Selecione um produto</option>
+                    <option *ngFor="let product of productRows" [value]="product.id">{{ product.internalCode }} - {{ product.description }}</option>
+                  </select>
+                  <small>Selecionar um produto preenche codigo, descricao, NCM, unidades e preco padrao.</small>
+                </label>
+                <button type="button" class="secondary" (click)="applyTaxRuleToNfeItem()" [disabled]="!nfeItemForm.productId">Aplicar regra fiscal</button>
+                <p class="notice form-note" *ngIf="nfeItemMessage">{{ nfeItemMessage }}</p>
                 <label class="field required"><span>Codigo</span><input [(ngModel)]="nfeItemForm.productCode" name="productCode" required><small>Codigo interno ou SKU usado para identificar o produto.</small></label>
                 <label class="field required"><span>Descricao</span><input [(ngModel)]="nfeItemForm.description" name="description" required><small>Descricao clara do item, como aparecera no documento fiscal.</small></label>
                 <label class="field required"><span>NCM</span><input [(ngModel)]="nfeItemForm.ncm" name="ncm" required><small>Codigo fiscal de 8 digitos do produto. Confirme com o cadastro fiscal.</small></label>
@@ -543,10 +637,15 @@ class AppComponent {
   rows: any[] = [];
   customerRows: any[] = [];
   productRows: any[] = [];
+  taxRuleRows: any[] = [];
   showCustomerForm = false;
   showProductForm = false;
+  showTaxRuleForm = false;
   customerMessage = '';
   productMessage = '';
+  taxRuleMessage = '';
+  selectedTaxRuleProductId = '';
+  nfeItemMessage = '';
   selectedCertificateFile: File | null = null;
   certificatePassword = '';
   certificateStatus: any = null;
@@ -601,8 +700,18 @@ class AppComponent {
     { code: 'SERVICO_CONTROLE_INTERNO', label: 'Servico apenas para controle interno' }
   ];
   productForm: any = this.emptyProduct();
+  operationTypeOptions = [
+    { code: 'VENDA', label: 'Venda' },
+    { code: 'DEVOLUCAO', label: 'Devolucao' },
+    { code: 'REMESSA', label: 'Remessa' },
+    { code: 'BONIFICACAO', label: 'Bonificacao' },
+    { code: 'TRANSFERENCIA', label: 'Transferencia' },
+    { code: 'OUTRAS', label: 'Outras' }
+  ];
+  taxRuleForm: any = this.emptyTaxRule();
   nfeStep = 1;
   nfeForm: any = {
+    customerId: '',
     natureOperation: '',
     operationType: 'SAIDA',
     destinationType: 'INTERNA',
@@ -645,6 +754,16 @@ class AppComponent {
       this.loadCertificateStatus();
       this.screen = 'dashboard';
     });
+  }
+
+  openTaxRuleScreen() {
+    this.screen = 'taxRules';
+    this.loadProductsForTaxRules();
+  }
+
+  openNfeScreen() {
+    this.screen = 'nfe';
+    this.loadNfeLookups();
   }
 
   load(path: string) {
@@ -873,6 +992,143 @@ class AppComponent {
     };
   }
 
+  emptyTaxRule() {
+    return {
+      productId: '',
+      ufOrigin: this.api.company()?.uf || 'SP',
+      ufDestination: 'SP',
+      operationType: 'VENDA',
+      taxRegime: this.api.company()?.taxRegime || 'SIMPLES_NACIONAL',
+      cfop: '',
+      icmsCst: '',
+      icmsCsosn: '',
+      icmsModBc: '',
+      icmsRate: 0,
+      icmsBaseReduction: 0,
+      fcpRate: 0,
+      icmsStModBc: '',
+      icmsStMva: 0,
+      icmsStRate: 0,
+      icmsStBaseReduction: 0,
+      ipiCst: '',
+      ipiRate: 0,
+      ipiEnquadramento: '',
+      pisCst: '',
+      pisRate: 0,
+      pisCalculationType: 'PERCENTUAL',
+      cofinsCst: '',
+      cofinsRate: 0,
+      cofinsCalculationType: 'PERCENTUAL',
+      benefitCode: '',
+      validFrom: new Date().toISOString().slice(0, 10),
+      validUntil: '',
+      active: true
+    };
+  }
+
+  loadProductsForTaxRules() {
+    const company = this.api.company();
+    if (!company) {
+      this.taxRuleMessage = 'Selecione uma empresa antes de cadastrar regras fiscais.';
+      return;
+    }
+    this.api.get(`/api/companies/${company.id}/products`).subscribe({
+      next: products => {
+        this.productRows = products;
+        this.taxRuleMessage = products.length ? '' : 'Cadastre um produto antes de criar regras fiscais.';
+      },
+      error: error => this.taxRuleMessage = error.error?.message || 'Nao foi possivel carregar produtos.'
+    });
+  }
+
+  openNewTaxRule() {
+    this.taxRuleForm = this.emptyTaxRule();
+    this.taxRuleForm.productId = this.selectedTaxRuleProductId || '';
+    this.taxRuleMessage = '';
+    this.showTaxRuleForm = true;
+    if (!this.productRows.length) this.loadProductsForTaxRules();
+  }
+
+  loadTaxRules() {
+    const company = this.api.company();
+    if (!company || !this.selectedTaxRuleProductId) {
+      this.taxRuleRows = [];
+      return;
+    }
+    this.api.get(`/api/companies/${company.id}/products/${this.selectedTaxRuleProductId}/tax-rules`).subscribe({
+      next: rules => {
+        this.taxRuleRows = rules;
+        this.taxRuleMessage = rules.length ? '' : 'Nenhuma regra fiscal cadastrada para este produto.';
+      },
+      error: error => this.taxRuleMessage = error.error?.message || 'Nao foi possivel carregar regras fiscais.'
+    });
+  }
+
+  createTaxRule() {
+    const company = this.api.company();
+    if (!company) {
+      this.taxRuleMessage = 'Selecione uma empresa antes de cadastrar regras fiscais.';
+      return;
+    }
+    const message = this.validateTaxRuleForm();
+    if (message) {
+      this.taxRuleMessage = message;
+      return;
+    }
+    const productId = this.taxRuleForm.productId;
+    const payload = this.normalizeTaxRulePayload();
+    this.api.post(`/api/companies/${company.id}/products/${productId}/tax-rules`, payload).subscribe({
+      next: rule => {
+        this.selectedTaxRuleProductId = productId;
+        this.taxRuleRows = [rule, ...this.taxRuleRows.filter(row => row.id !== rule.id)];
+        this.taxRuleForm = this.emptyTaxRule();
+        this.showTaxRuleForm = false;
+        this.taxRuleMessage = 'Regra fiscal cadastrada com sucesso.';
+      },
+      error: error => this.taxRuleMessage = error.error?.message || 'Nao foi possivel cadastrar a regra fiscal.'
+    });
+  }
+
+  validateTaxRuleForm() {
+    if (!this.taxRuleForm.productId) return 'Selecione o produto da regra fiscal.';
+    if (!this.taxRuleForm.ufOrigin || !this.taxRuleForm.ufDestination || !this.taxRuleForm.operationType || !this.taxRuleForm.taxRegime) {
+      return 'Preencha origem, destino, operacao e regime tributario.';
+    }
+    if (this.digits(this.taxRuleForm.cfop).length !== 4) return 'Informe um CFOP com 4 digitos.';
+    if (this.taxRuleForm.taxRegime === 'SIMPLES_NACIONAL' && !String(this.taxRuleForm.icmsCsosn || '').trim()) {
+      return 'Informe CSOSN para regra de Simples Nacional.';
+    }
+    if (this.taxRuleForm.taxRegime === 'REGIME_NORMAL' && !String(this.taxRuleForm.icmsCst || '').trim()) {
+      return 'Informe CST ICMS para regra de Regime Normal.';
+    }
+    if (!this.taxRuleForm.validFrom) return 'Informe a vigencia inicial.';
+    return '';
+  }
+
+  normalizeTaxRulePayload() {
+    return {
+      ...this.taxRuleForm,
+      ufOrigin: String(this.taxRuleForm.ufOrigin || '').toUpperCase(),
+      ufDestination: String(this.taxRuleForm.ufDestination || '').toUpperCase(),
+      cfop: this.digits(this.taxRuleForm.cfop),
+      icmsRate: this.number(this.taxRuleForm.icmsRate),
+      icmsBaseReduction: this.number(this.taxRuleForm.icmsBaseReduction),
+      fcpRate: this.number(this.taxRuleForm.fcpRate),
+      icmsStMva: this.number(this.taxRuleForm.icmsStMva),
+      icmsStRate: this.number(this.taxRuleForm.icmsStRate),
+      icmsStBaseReduction: this.number(this.taxRuleForm.icmsStBaseReduction),
+      ipiRate: this.number(this.taxRuleForm.ipiRate),
+      pisRate: this.number(this.taxRuleForm.pisRate),
+      cofinsRate: this.number(this.taxRuleForm.cofinsRate),
+      validUntil: this.taxRuleForm.validUntil || null
+    };
+  }
+
+  productLabel(productId: string) {
+    const product = this.productRows.find(row => row.id === productId);
+    return product ? `${product.internalCode} - ${product.description}` : productId || '-';
+  }
+
   createNfe() {
     const company = this.api.company();
     if (!company) return;
@@ -881,29 +1137,140 @@ class AppComponent {
 
   emptyNfeItem() {
     return {
+      productId: '',
       productCode: '',
       description: '',
       ncm: '',
+      cest: '',
       cfop: '',
       commercialUnit: 'UN',
+      taxableUnit: 'UN',
       commercialQuantity: 1,
       commercialUnitValue: 0,
+      taxableQuantity: 1,
+      taxableUnitValue: 0,
       freightValue: 0,
       insuranceValue: 0,
       discountValue: 0,
       otherExpenses: 0,
+      icmsOrigin: '0',
+      icmsCst: '',
+      icmsCsosn: '',
+      icmsRate: 0,
       icmsValue: 0,
+      ipiCst: '',
+      ipiRate: 0,
       ipiValue: 0,
+      pisCst: '',
+      pisRate: 0,
       pisValue: 0,
+      cofinsCst: '',
+      cofinsRate: 0,
       cofinsValue: 0,
       includeInTotal: true
     };
   }
 
+  loadNfeLookups() {
+    const company = this.api.company();
+    if (!company) return;
+    this.api.get(`/api/companies/${company.id}/customers`).subscribe(customers => this.customerRows = customers);
+    this.api.get(`/api/companies/${company.id}/products`).subscribe(products => this.productRows = products);
+    if (!this.nfeForm.natureOperation) this.nfeForm.natureOperation = company.defaultNatureOperation || '';
+    if (!this.nfeForm.presenceIndicator) this.nfeForm.presenceIndicator = company.defaultPresenceIndicator || '9';
+    if (!this.nfeForm.emissionType) this.nfeForm.emissionType = company.defaultEmissionType || '1';
+  }
+
+  applySelectedProductToNfeItem() {
+    const product = this.productRows.find(row => row.id === this.nfeItemForm.productId);
+    if (!product) return;
+    const cfop = this.nfeForm.destinationType === 'INTERESTADUAL'
+      ? product.cfopInterstate
+      : this.nfeForm.destinationType === 'EXTERIOR'
+        ? product.cfopExternal
+        : product.cfopInternal;
+    this.nfeItemForm = {
+      ...this.nfeItemForm,
+      productCode: product.internalCode,
+      description: product.description,
+      ncm: product.ncm,
+      cest: product.cest || '',
+      cfop: cfop || '',
+      commercialUnit: product.commercialUnit || 'UN',
+      taxableUnit: product.taxableUnit || product.commercialUnit || 'UN',
+      commercialUnitValue: this.number(product.unitPrice),
+      taxableUnitValue: this.number(product.unitPrice),
+      icmsOrigin: product.origin || '0'
+    };
+    this.nfeItemMessage = cfop ? 'Produto aplicado ao item. Revise quantidade, valores e impostos antes de adicionar.' : 'Produto aplicado, mas ele nao possui CFOP padrao para este destino. Aplique uma regra fiscal ou informe o CFOP.';
+  }
+
+  applyTaxRuleToNfeItem() {
+    const company = this.api.company();
+    if (!company || !this.nfeItemForm.productId) return;
+    this.api.get(`/api/companies/${company.id}/products/${this.nfeItemForm.productId}/tax-rules`).subscribe({
+      next: rules => {
+        const customer = this.customerRows.find(row => row.id === this.nfeForm.customerId);
+        const destinationUf = this.nfeForm.destinationType === 'EXTERIOR' ? 'EX' : (customer?.uf || company.uf || 'SP');
+        const operationType = this.nfeOperationTypeForRule();
+        const rule = rules.find((candidate: any) =>
+          candidate.active &&
+          candidate.ufOrigin === (company.uf || 'SP') &&
+          candidate.ufDestination === destinationUf &&
+          candidate.operationType === operationType &&
+          candidate.taxRegime === company.taxRegime
+        ) || rules.find((candidate: any) => candidate.active);
+
+        if (!rule) {
+          this.nfeItemMessage = 'Nenhuma regra fiscal ativa encontrada para este produto. Cadastre uma regra fiscal antes de transmitir.';
+          return;
+        }
+        this.applyRuleValuesToNfeItem(rule);
+        this.nfeItemMessage = `Regra fiscal aplicada: CFOP ${rule.cfop}, ${rule.ufOrigin}->${rule.ufDestination}, ${rule.operationType}.`;
+      },
+      error: error => this.nfeItemMessage = error.error?.message || 'Nao foi possivel carregar regras fiscais do produto.'
+    });
+  }
+
+  applyRuleValuesToNfeItem(rule: any) {
+    const grossTotal = this.money(this.number(this.nfeItemForm.commercialQuantity) * this.number(this.nfeItemForm.commercialUnitValue));
+    const icmsBase = grossTotal;
+    const ipiBase = grossTotal;
+    const pisBase = grossTotal;
+    const cofinsBase = grossTotal;
+    this.nfeItemForm = {
+      ...this.nfeItemForm,
+      cfop: rule.cfop || this.nfeItemForm.cfop,
+      icmsCst: rule.icmsCst || '',
+      icmsCsosn: rule.icmsCsosn || '',
+      icmsRate: this.number(rule.icmsRate),
+      icmsBase,
+      icmsValue: this.money(icmsBase * this.number(rule.icmsRate) / 100),
+      ipiCst: rule.ipiCst || '',
+      ipiRate: this.number(rule.ipiRate),
+      ipiBase,
+      ipiValue: this.money(ipiBase * this.number(rule.ipiRate) / 100),
+      pisCst: rule.pisCst || '',
+      pisRate: this.number(rule.pisRate),
+      pisBase,
+      pisValue: this.money(pisBase * this.number(rule.pisRate) / 100),
+      cofinsCst: rule.cofinsCst || '',
+      cofinsRate: this.number(rule.cofinsRate),
+      cofinsBase,
+      cofinsValue: this.money(cofinsBase * this.number(rule.cofinsRate) / 100)
+    };
+  }
+
+  nfeOperationTypeForRule() {
+    if (this.nfeForm.purpose === 'DEVOLUCAO') return 'DEVOLUCAO';
+    return this.nfeForm.operationType === 'SAIDA' ? 'VENDA' : 'OUTRAS';
+  }
+
   addNfeItem() {
     const quantity = this.number(this.nfeItemForm.commercialQuantity);
     const unitValue = this.number(this.nfeItemForm.commercialUnitValue);
-    if (!this.nfeItemForm.productCode || !this.nfeItemForm.description || !this.nfeItemForm.ncm || !this.nfeItemForm.cfop || quantity <= 0 || unitValue <= 0) {
+    if (!this.nfeItemForm.productId || !this.nfeItemForm.productCode || !this.nfeItemForm.description || !this.nfeItemForm.ncm || !this.nfeItemForm.cfop || quantity <= 0 || unitValue <= 0) {
+      this.nfeItemMessage = 'Selecione um produto e preencha codigo, descricao, NCM, CFOP, quantidade e valor unitario.';
       return;
     }
     const item = {
@@ -911,20 +1278,29 @@ class AppComponent {
       commercialQuantity: quantity,
       commercialUnitValue: unitValue,
       grossTotal: this.money(quantity * unitValue),
-      taxableUnit: this.nfeItemForm.commercialUnit,
-      taxableQuantity: quantity,
-      taxableUnitValue: unitValue,
+      taxableUnit: this.nfeItemForm.taxableUnit || this.nfeItemForm.commercialUnit,
+      taxableQuantity: this.number(this.nfeItemForm.taxableQuantity) || quantity,
+      taxableUnitValue: this.number(this.nfeItemForm.taxableUnitValue) || unitValue,
       freightValue: this.money(this.nfeItemForm.freightValue),
       insuranceValue: this.money(this.nfeItemForm.insuranceValue),
       discountValue: this.money(this.nfeItemForm.discountValue),
       otherExpenses: this.money(this.nfeItemForm.otherExpenses),
+      icmsBase: this.money(this.nfeItemForm.icmsBase),
+      icmsRate: this.number(this.nfeItemForm.icmsRate),
       icmsValue: this.money(this.nfeItemForm.icmsValue),
+      ipiBase: this.money(this.nfeItemForm.ipiBase),
+      ipiRate: this.number(this.nfeItemForm.ipiRate),
       ipiValue: this.money(this.nfeItemForm.ipiValue),
+      pisBase: this.money(this.nfeItemForm.pisBase),
+      pisRate: this.number(this.nfeItemForm.pisRate),
       pisValue: this.money(this.nfeItemForm.pisValue),
+      cofinsBase: this.money(this.nfeItemForm.cofinsBase),
+      cofinsRate: this.number(this.nfeItemForm.cofinsRate),
       cofinsValue: this.money(this.nfeItemForm.cofinsValue)
     };
     this.nfeItems = [...this.nfeItems, item];
     this.nfeItemForm = this.emptyNfeItem();
+    this.nfeItemMessage = '';
     this.nfeTotals = this.calculateNfeTotals();
   }
 
@@ -954,6 +1330,11 @@ class AppComponent {
   submitNfeWizard() {
     const company = this.api.company();
     if (!company || !this.nfeItems.length) return;
+    if (!this.nfeForm.customerId) {
+      this.rows = [{ erro: 'Selecione o destinatario antes de criar a NF-e.' }];
+      this.nfeStep = 1;
+      return;
+    }
     const payload = {
       ...this.nfeForm,
       natureOperation: this.nfeForm.natureOperation || company.defaultNatureOperation,
