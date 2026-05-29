@@ -1,0 +1,17 @@
+package br.com.nfesefassp.model;
+
+public enum NFeStatus {
+    RASCUNHO,
+    VALIDADA,
+    XML_GERADO,
+    ASSINADA,
+    TRANSMITIDA,
+    EM_PROCESSAMENTO,
+    AUTORIZADA,
+    REJEITADA,
+    DENEGADA,
+    CANCELADA,
+    INUTILIZADA,
+    ERRO_COMUNICACAO,
+    CONTINGENCIA_PENDENTE
+}
