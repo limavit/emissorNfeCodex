@@ -39,6 +39,7 @@ public class Company {
     private String cityCodeIbge;
     @Column(name = "city_name")
     private String cityName;
+    @Column(length = 2)
     private String uf;
     @Column(name = "country_code")
     private String countryCode = "1058";

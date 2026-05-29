@@ -1,0 +1,1 @@
+-- Source of truth: backend/src/main/resources/db/migration/V2__align_uf_columns_to_varchar.sql

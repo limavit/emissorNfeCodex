@@ -1,0 +1,6 @@
+ALTER TABLE companies ALTER COLUMN uf TYPE VARCHAR(2);
+ALTER TABLE customers ALTER COLUMN uf TYPE VARCHAR(2);
+ALTER TABLE product_tax_rules ALTER COLUMN uf_origin TYPE VARCHAR(2);
+ALTER TABLE product_tax_rules ALTER COLUMN uf_destination TYPE VARCHAR(2);
+ALTER TABLE nfe_transport ALTER COLUMN carrier_uf TYPE VARCHAR(2);
+ALTER TABLE nfe_transport ALTER COLUMN vehicle_uf TYPE VARCHAR(2);
