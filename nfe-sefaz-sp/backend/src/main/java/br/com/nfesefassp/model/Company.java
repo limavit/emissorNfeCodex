@@ -105,6 +105,11 @@ public class Company {
         this.updatedAt = OffsetDateTime.now();
     }
 
+    public void incrementNextNfeNumber() {
+        this.nextNfeNumber = this.nextNfeNumber + 1;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     public UUID getId() { return id; }
     public UUID getOwnerUserId() { return ownerUserId; }
     public String getCnpj() { return cnpj; }
@@ -113,5 +118,6 @@ public class Company {
     public String getEnvironment() { return environment; }
     public Integer getDefaultSeries() { return defaultSeries; }
     public Long getNextNfeNumber() { return nextNfeNumber; }
+    public String getDefaultNatureOperation() { return defaultNatureOperation; }
     public boolean isActive() { return active; }
 }

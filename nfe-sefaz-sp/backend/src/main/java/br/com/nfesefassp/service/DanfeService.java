@@ -12,6 +12,11 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class DanfeService {
+    public byte[] generate(NFe nfe) {
+        String text = "DANFE MVP\nChave: " + nfe.getAccessKey() + "\nNumero: " + nfe.getNumber();
+        return text.getBytes(StandardCharsets.UTF_8);
+    }
+
     public byte[] generate(Map<String, Object> nfe) {
         String text = "DANFE MVP\nChave: " + nfe.get("access_key") + "\nNumero: " + nfe.get("number");
         return text.getBytes(StandardCharsets.UTF_8);

@@ -1,13 +1,11 @@
 package br.com.nfesefassp.controller;
 
-import br.com.nfesefassp.model.*;
-import br.com.nfesefassp.service.*;
-
-import java.math.BigDecimal;
+import br.com.nfesefassp.model.Product;
+import br.com.nfesefassp.model.ProductRequest;
+import br.com.nfesefassp.service.ProductService;
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,50 +18,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/companies/{companyId}/products")
 public class ProductController {
-    private final JdbcTemplate jdbc;
+    private final ProductService service;
 
-    public ProductController(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public ProductController(ProductService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public List<Map<String, Object>> list(@PathVariable UUID companyId) {
-        return jdbc.queryForList("select * from products where company_id = ? order by description", companyId);
+    public List<Product> list(@PathVariable UUID companyId) {
+        return service.list(companyId);
     }
 
     @PostMapping
-    public Map<String, Object> create(@PathVariable UUID companyId, @RequestBody Map<String, Object> body) {
-        UUID id = UUID.randomUUID();
-        jdbc.update("""
-                insert into products (id, company_id, internal_code, ean, description, ncm, cest, cfop_internal,
-                cfop_interstate, cfop_external, commercial_unit, taxable_unit, conversion_factor, unit_price, origin, item_type, active)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
-                """, id, companyId, body.get("internalCode"), body.get("ean"), body.get("description"), body.get("ncm"),
-                body.get("cest"), body.get("cfopInternal"), body.get("cfopInterstate"), body.get("cfopExternal"),
-                body.getOrDefault("commercialUnit", "UN"), body.getOrDefault("taxableUnit", "UN"),
-                decimal(body.get("conversionFactor"), BigDecimal.ONE), decimal(body.get("unitPrice"), BigDecimal.ZERO),
-                body.getOrDefault("origin", "0"), body.getOrDefault("itemType", "MERCADORIA_REVENDA"));
-        return Map.of("id", id, "companyId", companyId);
+    public Product create(@PathVariable UUID companyId, @Valid @RequestBody ProductRequest request) {
+        return service.create(companyId, request);
     }
 
     @GetMapping("/{id}")
-    public Map<String, Object> get(@PathVariable UUID companyId, @PathVariable UUID id) {
-        return jdbc.queryForMap("select * from products where company_id = ? and id = ?", companyId, id);
+    public Product get(@PathVariable UUID companyId, @PathVariable UUID id) {
+        return service.get(companyId, id);
     }
 
     @PutMapping("/{id}")
-    public Map<String, Object> update(@PathVariable UUID companyId, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
-        jdbc.update("update products set description = ?, unit_price = ?, updated_at = now() where company_id = ? and id = ?",
-                body.get("description"), decimal(body.get("unitPrice"), BigDecimal.ZERO), companyId, id);
-        return get(companyId, id);
+    public Product update(@PathVariable UUID companyId, @PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
+        return service.update(companyId, id, request);
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID companyId, @PathVariable UUID id) {
-        jdbc.update("update products set active = false where company_id = ? and id = ?", companyId, id);
-    }
-
-    private BigDecimal decimal(Object value, BigDecimal fallback) {
-        return value == null ? fallback : new BigDecimal(value.toString());
+        service.delete(companyId, id);
     }
 }

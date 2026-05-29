@@ -23,6 +23,19 @@ security     JWT, filtros e configuracao de seguranca
 config       Beans e configuracoes tecnicas
 ```
 
+Os cadastros principais seguem o fluxo:
+
+```text
+Controller -> Service -> Repository -> Model
+```
+
+Atualmente esse padrao ja cobre:
+
+- `Customer`
+- `Product`
+- `ProductTaxRule`
+- `NFe`
+
 ## Rodar localmente
 
 ```bash
