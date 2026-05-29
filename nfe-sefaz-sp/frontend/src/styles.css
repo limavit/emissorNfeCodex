@@ -26,9 +26,11 @@ aside .danger { border-color: #f2a19c; color: #ffd9d6; }
 .panel h2 { grid-column: 1 / -1; }
 .field { display: grid; gap: 6px; }
 .field span { color: #46515c; font-size: 13px; font-weight: 650; line-height: 1.2; }
+.field small { color: #6b7680; font-size: 12px; line-height: 1.35; max-width: 48ch; }
 .field.required > span::after { content: " *"; color: #c62828; font-weight: 800; }
 .field input, .field select { width: 100%; }
 .field.check { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
+.field.check small { flex-basis: 100%; }
 .field.check input { width: auto; }
 .required-legend { color: #5f6b76; font-size: 13px; margin: 10px 0 0; }
 .required-legend span { color: #c62828; font-weight: 800; }
