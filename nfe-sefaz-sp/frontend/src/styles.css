@@ -25,7 +25,8 @@ aside .danger { border-color: #f2a19c; color: #ffd9d6; }
 .card, .panel, .metrics article { background: white; border: 1px solid #dfe4e8; border-radius: 8px; padding: 16px; }
 .panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .panel h2 { grid-column: 1 / -1; }
-.customer-form { margin-bottom: 0; }
+.customer-form, .product-form { margin-bottom: 0; }
+.field.wide, .form-note { grid-column: 1 / -1; }
 .form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; }
 .field { display: grid; gap: 6px; }
 .field span { color: #46515c; font-size: 13px; font-weight: 650; line-height: 1.2; }

@@ -308,7 +308,133 @@ class CrudTitleComponent {
               </table>
             </div>
           </section>
-          <section *ngSwitchCase="'products'"><crud-title title="Produtos"></crud-title><button (click)="load('/products')">Carregar produtos</button><pre>{{ rows | json }}</pre></section>
+          <section *ngSwitchCase="'products'">
+            <crud-title title="Produtos"></crud-title>
+            <div class="toolbar">
+              <button (click)="openNewProduct()">Novo produto</button>
+              <button class="secondary" (click)="loadProducts()">Carregar produtos</button>
+            </div>
+            <p class="notice" *ngIf="!api.company()">Selecione uma empresa emissora antes de cadastrar produtos.</p>
+            <p class="notice" *ngIf="productMessage">{{ productMessage }}</p>
+
+            <form class="panel product-form" *ngIf="showProductForm" (ngSubmit)="createProduct()">
+              <h2>Novo produto</h2>
+              <label class="field required">
+                <span>Codigo interno</span>
+                <input [(ngModel)]="productForm.internalCode" name="productInternalCode" required>
+                <small>Codigo usado pela empresa para identificar o produto. Deve ser unico nesta empresa.</small>
+              </label>
+              <label class="field">
+                <span>EAN/GTIN</span>
+                <input [(ngModel)]="productForm.ean" name="productEan">
+                <small>Codigo de barras do produto. Deixe vazio quando o produto nao tiver GTIN.</small>
+              </label>
+              <label class="field required wide">
+                <span>Descricao</span>
+                <input [(ngModel)]="productForm.description" name="productDescription" required>
+                <small>Descricao que sera usada como base nos itens da NF-e.</small>
+              </label>
+              <label class="field required">
+                <span>NCM</span>
+                <input [(ngModel)]="productForm.ncm" name="productNcm" required maxlength="8">
+                <small>Codigo fiscal de 8 digitos. Confirme a classificacao com contador ou area fiscal.</small>
+              </label>
+              <label class="field">
+                <span>CEST</span>
+                <input [(ngModel)]="productForm.cest" name="productCest" maxlength="7">
+                <small>Informe quando o produto estiver sujeito a substituicao tributaria com CEST.</small>
+              </label>
+              <label class="field">
+                <span>CFOP interno padrao</span>
+                <input [(ngModel)]="productForm.cfopInternal" name="productCfopInternal" maxlength="4">
+                <small>CFOP usado em operacoes dentro da mesma UF, quando aplicavel.</small>
+              </label>
+              <label class="field">
+                <span>CFOP interestadual padrao</span>
+                <input [(ngModel)]="productForm.cfopInterstate" name="productCfopInterstate" maxlength="4">
+                <small>CFOP usado em operacoes para outra UF, quando aplicavel.</small>
+              </label>
+              <label class="field">
+                <span>CFOP exterior padrao</span>
+                <input [(ngModel)]="productForm.cfopExternal" name="productCfopExternal" maxlength="4">
+                <small>CFOP usado em operacoes de importacao/exportacao, quando aplicavel.</small>
+              </label>
+              <label class="field required">
+                <span>Unidade comercial</span>
+                <input [(ngModel)]="productForm.commercialUnit" name="productCommercialUnit" required>
+                <small>Unidade usada na venda. Ex.: UN, CX, KG, M.</small>
+              </label>
+              <label class="field required">
+                <span>Unidade tributavel</span>
+                <input [(ngModel)]="productForm.taxableUnit" name="productTaxableUnit" required>
+                <small>Unidade exigida para tributacao. Normalmente igual a unidade comercial.</small>
+              </label>
+              <label class="field required">
+                <span>Fator de conversao</span>
+                <input [(ngModel)]="productForm.conversionFactor" name="productConversionFactor" type="number" step="0.000001" required>
+                <small>Use 1 quando unidade comercial e tributavel forem iguais.</small>
+              </label>
+              <label class="field required">
+                <span>Valor unitario padrao</span>
+                <input [(ngModel)]="productForm.unitPrice" name="productUnitPrice" type="number" step="0.0001" required>
+                <small>Preco sugerido para preencher itens da NF-e. Pode ser ajustado na nota.</small>
+              </label>
+              <label class="field required">
+                <span>Origem da mercadoria</span>
+                <select [(ngModel)]="productForm.origin" name="productOrigin" required>
+                  <option *ngFor="let option of productOriginOptions" [value]="option.code">{{ option.code }} - {{ option.label }}</option>
+                </select>
+                <small>Codigo de origem usado no grupo de ICMS do item.</small>
+              </label>
+              <label class="field required">
+                <span>Tipo do item</span>
+                <select [(ngModel)]="productForm.itemType" name="productItemType" required>
+                  <option *ngFor="let option of productItemTypeOptions" [value]="option.code">{{ option.label }}</option>
+                </select>
+                <small>Classificacao interna que ajuda a separar revenda, materia-prima, produto acabado e outros.</small>
+              </label>
+              <label class="field">
+                <span>Peso bruto</span>
+                <input [(ngModel)]="productForm.grossWeight" name="productGrossWeight" type="number" step="0.0001">
+                <small>Peso total com embalagem, quando relevante para transporte.</small>
+              </label>
+              <label class="field">
+                <span>Peso liquido</span>
+                <input [(ngModel)]="productForm.netWeight" name="productNetWeight" type="number" step="0.0001">
+                <small>Peso do produto sem embalagem, quando relevante.</small>
+              </label>
+              <label class="field check">
+                <input [(ngModel)]="productForm.active" name="productActive" type="checkbox">
+                <span>Produto ativo</span>
+                <small>Produtos inativos nao devem ser usados em novas NF-e.</small>
+              </label>
+              <p class="notice form-note">ICMS, IPI, PIS e COFINS detalhados devem ser cadastrados em Regras fiscais do produto. O sistema nao inventa tributacao automaticamente.</p>
+              <div class="form-actions">
+                <button>Salvar produto</button>
+                <button type="button" class="secondary" (click)="showProductForm = false">Cancelar</button>
+              </div>
+            </form>
+            <p class="required-legend" *ngIf="showProductForm"><span aria-hidden="true">*</span> campo obrigatorio</p>
+
+            <div class="table-wrap" *ngIf="productRows.length">
+              <table>
+                <thead>
+                  <tr><th>Codigo</th><th>Descricao</th><th>NCM/CEST</th><th>Unidades</th><th>Preco</th><th>CFOPs</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let product of productRows">
+                    <td><strong>{{ product.internalCode }}</strong><br><span class="muted">{{ product.ean || 'Sem GTIN' }}</span></td>
+                    <td>{{ product.description }}<br><span class="muted">{{ product.itemType }}</span></td>
+                    <td>{{ product.ncm }}<br><span class="muted">CEST {{ product.cest || '-' }}</span></td>
+                    <td>{{ product.commercialUnit }}/{{ product.taxableUnit }}<br><span class="muted">Fator {{ product.conversionFactor || 1 }}</span></td>
+                    <td>{{ product.unitPrice | currency:'BRL' }}</td>
+                    <td>Int. {{ product.cfopInternal || '-' }}<br>Inter. {{ product.cfopInterstate || '-' }}<br>Ext. {{ product.cfopExternal || '-' }}</td>
+                    <td>{{ product.active ? 'Ativo' : 'Inativo' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
           <section *ngSwitchCase="'taxRules'"><h1>Regras fiscais do produto</h1><p>Cadastre CFOP, CST/CSOSN, ICMS, IPI, PIS e COFINS por UF, operacao e regime.</p></section>
           <section *ngSwitchCase="'nfe'">
             <h1>NF-e</h1>
@@ -416,8 +542,11 @@ class AppComponent {
   companies: any[] = [];
   rows: any[] = [];
   customerRows: any[] = [];
+  productRows: any[] = [];
   showCustomerForm = false;
+  showProductForm = false;
   customerMessage = '';
+  productMessage = '';
   selectedCertificateFile: File | null = null;
   certificatePassword = '';
   certificateStatus: any = null;
@@ -452,6 +581,26 @@ class AppComponent {
   ];
   ufOptions = ['SP', 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SE', 'TO', 'EX'];
   customerForm: any = this.emptyCustomer();
+  productOriginOptions = [
+    { code: '0', label: 'Nacional' },
+    { code: '1', label: 'Estrangeira - importacao direta' },
+    { code: '2', label: 'Estrangeira - adquirida no mercado interno' },
+    { code: '3', label: 'Nacional com conteudo importado superior a 40%' },
+    { code: '4', label: 'Nacional conforme processos produtivos basicos' },
+    { code: '5', label: 'Nacional com conteudo importado inferior ou igual a 40%' },
+    { code: '6', label: 'Estrangeira - importacao direta sem similar nacional' },
+    { code: '7', label: 'Estrangeira - mercado interno sem similar nacional' },
+    { code: '8', label: 'Nacional com conteudo importado superior a 70%' }
+  ];
+  productItemTypeOptions = [
+    { code: 'MERCADORIA_REVENDA', label: 'Mercadoria para revenda' },
+    { code: 'MATERIA_PRIMA', label: 'Materia-prima' },
+    { code: 'PRODUTO_ACABADO', label: 'Produto acabado' },
+    { code: 'USO_CONSUMO', label: 'Uso e consumo' },
+    { code: 'ATIVO_IMOBILIZADO', label: 'Ativo imobilizado' },
+    { code: 'SERVICO_CONTROLE_INTERNO', label: 'Servico apenas para controle interno' }
+  ];
+  productForm: any = this.emptyProduct();
   nfeStep = 1;
   nfeForm: any = {
     natureOperation: '',
@@ -616,6 +765,112 @@ class AppComponent {
 
   digits(value: any) {
     return String(value || '').replace(/\D/g, '');
+  }
+
+  emptyProduct() {
+    return {
+      internalCode: '',
+      ean: '',
+      description: '',
+      ncm: '',
+      cest: '',
+      cfopInternal: '',
+      cfopInterstate: '',
+      cfopExternal: '',
+      commercialUnit: 'UN',
+      taxableUnit: 'UN',
+      conversionFactor: 1,
+      unitPrice: 0,
+      origin: '0',
+      itemType: 'MERCADORIA_REVENDA',
+      grossWeight: null,
+      netWeight: null,
+      active: true
+    };
+  }
+
+  openNewProduct() {
+    this.productForm = this.emptyProduct();
+    this.productMessage = '';
+    this.showProductForm = true;
+  }
+
+  loadProducts() {
+    const company = this.api.company();
+    if (!company) {
+      this.productMessage = 'Selecione uma empresa antes de consultar produtos.';
+      return;
+    }
+    this.api.get(`/api/companies/${company.id}/products`).subscribe({
+      next: products => {
+        this.productRows = products;
+        this.productMessage = products.length ? '' : 'Nenhum produto cadastrado para esta empresa.';
+      },
+      error: error => this.productMessage = error.error?.message || 'Nao foi possivel carregar produtos.'
+    });
+  }
+
+  createProduct() {
+    const company = this.api.company();
+    if (!company) {
+      this.productMessage = 'Selecione uma empresa antes de cadastrar produtos.';
+      return;
+    }
+    const message = this.validateProductForm();
+    if (message) {
+      this.productMessage = message;
+      return;
+    }
+    const payload = this.normalizeProductPayload();
+    this.api.post(`/api/companies/${company.id}/products`, payload).subscribe({
+      next: product => {
+        this.productRows = [product, ...this.productRows.filter(row => row.id !== product.id)];
+        this.productForm = this.emptyProduct();
+        this.showProductForm = false;
+        this.productMessage = 'Produto cadastrado com sucesso.';
+      },
+      error: error => this.productMessage = error.error?.message || 'Nao foi possivel cadastrar o produto.'
+    });
+  }
+
+  validateProductForm() {
+    const required = ['internalCode', 'description', 'ncm', 'commercialUnit', 'taxableUnit', 'origin', 'itemType'];
+    if (required.some(field => !String(this.productForm[field] || '').trim())) {
+      return 'Preencha os campos obrigatorios do produto.';
+    }
+    if (this.digits(this.productForm.ncm).length !== 8) {
+      return 'Informe um NCM com 8 digitos.';
+    }
+    if (this.productForm.cest && this.digits(this.productForm.cest).length !== 7) {
+      return 'Informe um CEST com 7 digitos ou deixe o campo vazio.';
+    }
+    if (this.number(this.productForm.conversionFactor) <= 0) {
+      return 'O fator de conversao deve ser maior que zero.';
+    }
+    if (this.number(this.productForm.unitPrice) < 0) {
+      return 'O valor unitario nao pode ser negativo.';
+    }
+    return '';
+  }
+
+  normalizeProductPayload() {
+    return {
+      ...this.productForm,
+      internalCode: String(this.productForm.internalCode || '').trim(),
+      ean: this.digits(this.productForm.ean),
+      description: String(this.productForm.description || '').trim(),
+      ncm: this.digits(this.productForm.ncm),
+      cest: this.productForm.cest ? this.digits(this.productForm.cest) : '',
+      cfopInternal: this.digits(this.productForm.cfopInternal),
+      cfopInterstate: this.digits(this.productForm.cfopInterstate),
+      cfopExternal: this.digits(this.productForm.cfopExternal),
+      commercialUnit: String(this.productForm.commercialUnit || 'UN').toUpperCase(),
+      taxableUnit: String(this.productForm.taxableUnit || 'UN').toUpperCase(),
+      conversionFactor: this.number(this.productForm.conversionFactor) || 1,
+      unitPrice: this.money(this.productForm.unitPrice),
+      grossWeight: this.productForm.grossWeight === null || this.productForm.grossWeight === '' ? null : this.number(this.productForm.grossWeight),
+      netWeight: this.productForm.netWeight === null || this.productForm.netWeight === '' ? null : this.number(this.productForm.netWeight)
+    };
   }
 
   createNfe() {
