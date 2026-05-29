@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nfe-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nfe_sefaz_sp}
+      POSTGRES_USER: ${POSTGRES_USER:-nfe_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nfe_user} -d ${POSTGRES_DB:-nfe_sefaz_sp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: nfe-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-nfe_sefaz_sp}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-nfe_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      JWT_SECRET: ${JWT_SECRET:-change-me-use-a-long-random-secret}
+      CERTIFICATE_ENCRYPTION_KEY: ${CERTIFICATE_ENCRYPTION_KEY:-change-me-32-bytes-minimum-value}
+      STORAGE_BASE_PATH: /app/storage
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: nfe-frontend
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: nfe-pgadmin
+    profiles: ["tools"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.local
+      PGADMIN_DEFAULT_PASSWORD: change-me
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

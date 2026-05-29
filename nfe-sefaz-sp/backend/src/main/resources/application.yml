@@ -1,0 +1,30 @@
+server:
+  port: ${BACKEND_PORT:8080}
+
+spring:
+  application:
+    name: nfe-sefaz-sp
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:nfe_sefaz_sp}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:nfe_user}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:change-me}}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    locations: classpath:db/migration
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-use-a-long-random-secret}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+  storage-base-path: ${STORAGE_BASE_PATH:./storage}
+  certificate-encryption-key: ${CERTIFICATE_ENCRYPTION_KEY:change-me-32-bytes-minimum-value}
+  sefaz:
+    default-uf: ${SEFAZ_DEFAULT_UF:SP}
+    default-environment: ${SEFAZ_DEFAULT_ENVIRONMENT:homologacao}
+
+logging:
+  level:
+    org.springframework.security: INFO

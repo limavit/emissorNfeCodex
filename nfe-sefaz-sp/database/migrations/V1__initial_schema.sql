@@ -1,0 +1,2 @@
+-- Source of truth: backend/src/main/resources/db/migration/V1__initial_schema.sql
+-- This copy documents the database contract at monorepo level.

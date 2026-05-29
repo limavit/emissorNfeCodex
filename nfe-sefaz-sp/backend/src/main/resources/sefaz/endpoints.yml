@@ -1,0 +1,15 @@
+# Atualizar somente após consulta aos documentos oficiais vigentes do Portal Nacional da NF-e e SEFAZ-SP.
+# Os valores abaixo sao placeholders de desenvolvimento e nao devem ser usados para transmissao real.
+SP:
+  homologacao:
+    status: "https://homologacao.placeholder.sefaz.sp.gov.br/nfe/status"
+    autorizacao: "https://homologacao.placeholder.sefaz.sp.gov.br/nfe/autorizacao"
+    retorno_autorizacao: "https://homologacao.placeholder.sefaz.sp.gov.br/nfe/retorno"
+    evento: "https://homologacao.placeholder.sefaz.sp.gov.br/nfe/evento"
+    inutilizacao: "https://homologacao.placeholder.sefaz.sp.gov.br/nfe/inutilizacao"
+  producao:
+    status: "https://producao.placeholder.sefaz.sp.gov.br/nfe/status"
+    autorizacao: "https://producao.placeholder.sefaz.sp.gov.br/nfe/autorizacao"
+    retorno_autorizacao: "https://producao.placeholder.sefaz.sp.gov.br/nfe/retorno"
+    evento: "https://producao.placeholder.sefaz.sp.gov.br/nfe/evento"
+    inutilizacao: "https://producao.placeholder.sefaz.sp.gov.br/nfe/inutilizacao"
