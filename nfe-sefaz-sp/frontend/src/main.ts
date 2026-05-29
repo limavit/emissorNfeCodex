@@ -1,5 +1,6 @@
+import 'zone.js';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpClientModule, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { Component, Injectable, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { bootstrapApplication } from '@angular/platform-browser';
@@ -50,7 +51,7 @@ class CrudTitleComponent {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, CrudTitleComponent],
+  imports: [CommonModule, FormsModule, CrudTitleComponent],
   template: `
     <main class="shell" *ngIf="api.token(); else auth">
       <aside>
@@ -198,4 +199,4 @@ class AppComponent {
   }
 }
 
-bootstrapApplication(AppComponent, { providers: [] });
+bootstrapApplication(AppComponent, { providers: [provideHttpClient()] });
