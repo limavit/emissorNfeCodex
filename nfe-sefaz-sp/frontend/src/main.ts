@@ -156,7 +156,158 @@ class CrudTitleComponent {
             </article>
             <p class="notice" *ngIf="certificateMessage">{{ certificateMessage }}</p>
           </section>
-          <section *ngSwitchCase="'customers'"><crud-title title="Clientes"></crud-title><button (click)="load('/customers')">Carregar clientes</button><pre>{{ rows | json }}</pre></section>
+          <section *ngSwitchCase="'customers'">
+            <crud-title title="Clientes"></crud-title>
+            <div class="toolbar">
+              <button (click)="openNewCustomer()">Novo cliente</button>
+              <button class="secondary" (click)="loadCustomers()">Carregar clientes</button>
+            </div>
+            <p class="notice" *ngIf="!api.company()">Selecione uma empresa emissora antes de cadastrar clientes.</p>
+            <p class="notice" *ngIf="customerMessage">{{ customerMessage }}</p>
+
+            <form class="panel customer-form" *ngIf="showCustomerForm" (ngSubmit)="createCustomer()">
+              <h2>Novo cliente</h2>
+              <label class="field required">
+                <span>Tipo de pessoa</span>
+                <select [(ngModel)]="customerForm.personType" name="customerPersonType" required>
+                  <option *ngFor="let option of personTypeOptions" [value]="option.code">{{ option.label }}</option>
+                </select>
+                <small>Define qual documento sera enviado no XML: CPF, CNPJ ou identificador estrangeiro.</small>
+              </label>
+              <label class="field required" *ngIf="customerForm.personType === 'FISICA'">
+                <span>CPF</span>
+                <input [(ngModel)]="customerForm.cpf" name="customerCpf" required maxlength="14">
+                <small>Informe o CPF do destinatario, preferencialmente somente numeros.</small>
+              </label>
+              <label class="field required" *ngIf="customerForm.personType === 'JURIDICA'">
+                <span>CNPJ</span>
+                <input [(ngModel)]="customerForm.cnpj" name="customerCnpj" required maxlength="18">
+                <small>Informe o CNPJ do destinatario, preferencialmente somente numeros.</small>
+              </label>
+              <label class="field required" *ngIf="customerForm.personType === 'ESTRANGEIRO'">
+                <span>ID estrangeiro</span>
+                <input [(ngModel)]="customerForm.foreignId" name="customerForeignId" required>
+                <small>Identificacao fiscal ou documento usado no pais do destinatario.</small>
+              </label>
+              <label class="field required">
+                <span>Nome ou razao social</span>
+                <input [(ngModel)]="customerForm.name" name="customerName" required>
+                <small>Nome que aparecera como destinatario da NF-e.</small>
+              </label>
+              <label class="field">
+                <span>Nome fantasia</span>
+                <input [(ngModel)]="customerForm.tradeName" name="customerTradeName">
+                <small>Opcional para pessoa juridica; ajuda na identificacao interna.</small>
+              </label>
+              <label class="field required">
+                <span>Indicador de inscricao estadual</span>
+                <select [(ngModel)]="customerForm.stateRegistrationIndicator" name="customerIeIndicator" required>
+                  <option *ngFor="let option of stateRegistrationIndicatorOptions" [value]="option.code">{{ option.label }}</option>
+                </select>
+                <small>Informe se o cliente e contribuinte de ICMS, isento ou nao contribuinte.</small>
+              </label>
+              <label class="field" *ngIf="customerForm.stateRegistrationIndicator === 'CONTRIBUINTE_ICMS'">
+                <span>Inscricao estadual</span>
+                <input [(ngModel)]="customerForm.stateRegistration" name="customerStateRegistration">
+                <small>Obrigatoria quando o destinatario for contribuinte de ICMS.</small>
+              </label>
+              <label class="field">
+                <span>Inscricao municipal</span>
+                <input [(ngModel)]="customerForm.municipalRegistration" name="customerMunicipalRegistration">
+                <small>Use quando existir no cadastro do cliente; nao substitui a inscricao estadual.</small>
+              </label>
+              <label class="field">
+                <span>E-mail</span>
+                <input [(ngModel)]="customerForm.email" name="customerEmail" type="email">
+                <small>Contato para envio de XML/DANFE quando aplicavel.</small>
+              </label>
+              <label class="field">
+                <span>Telefone</span>
+                <input [(ngModel)]="customerForm.phone" name="customerPhone">
+                <small>Telefone comercial ou do responsavel pelo recebimento.</small>
+              </label>
+              <label class="field required">
+                <span>CEP</span>
+                <input [(ngModel)]="customerForm.zipCode" name="customerZipCode" required maxlength="9">
+                <small>Informe somente numeros para evitar rejeicoes de formato.</small>
+              </label>
+              <label class="field required">
+                <span>Logradouro</span>
+                <input [(ngModel)]="customerForm.street" name="customerStreet" required>
+                <small>Rua, avenida, estrada ou equivalente do destinatario.</small>
+              </label>
+              <label class="field required">
+                <span>Numero</span>
+                <input [(ngModel)]="customerForm.number" name="customerNumber" required>
+                <small>Use SN quando o endereco nao possuir numero.</small>
+              </label>
+              <label class="field">
+                <span>Complemento</span>
+                <input [(ngModel)]="customerForm.complement" name="customerComplement">
+                <small>Opcional: sala, bloco, loja, apartamento ou referencia.</small>
+              </label>
+              <label class="field required">
+                <span>Bairro</span>
+                <input [(ngModel)]="customerForm.district" name="customerDistrict" required>
+                <small>Bairro ou distrito do endereco do destinatario.</small>
+              </label>
+              <label class="field required">
+                <span>Codigo IBGE do municipio</span>
+                <input [(ngModel)]="customerForm.cityCodeIbge" name="customerCityCodeIbge" required maxlength="7">
+                <small>Codigo oficial de 7 digitos do municipio conforme tabela IBGE.</small>
+              </label>
+              <label class="field required">
+                <span>Municipio</span>
+                <input [(ngModel)]="customerForm.cityName" name="customerCityName" required>
+                <small>Nome do municipio do destinatario, conforme tabela IBGE.</small>
+              </label>
+              <label class="field required">
+                <span>UF</span>
+                <select [(ngModel)]="customerForm.uf" name="customerUf" required>
+                  <option *ngFor="let uf of ufOptions" [value]="uf">{{ uf }}</option>
+                </select>
+                <small>Estado do destinatario. Para exterior, use EX.</small>
+              </label>
+              <label class="field required">
+                <span>Codigo do pais</span>
+                <input [(ngModel)]="customerForm.countryCode" name="customerCountryCode" required>
+                <small>Brasil usa 1058. Para exterior, consulte a tabela fiscal vigente.</small>
+              </label>
+              <label class="field required">
+                <span>Pais</span>
+                <input [(ngModel)]="customerForm.countryName" name="customerCountryName" required>
+                <small>Nome do pais do destinatario.</small>
+              </label>
+              <label class="field check">
+                <input [(ngModel)]="customerForm.active" name="customerActive" type="checkbox">
+                <span>Cliente ativo</span>
+                <small>Clientes inativos nao devem ser usados em novas NF-e.</small>
+              </label>
+              <div class="form-actions">
+                <button>Salvar cliente</button>
+                <button type="button" class="secondary" (click)="showCustomerForm = false">Cancelar</button>
+              </div>
+            </form>
+            <p class="required-legend" *ngIf="showCustomerForm"><span aria-hidden="true">*</span> campo obrigatorio</p>
+
+            <div class="table-wrap" *ngIf="customerRows.length">
+              <table>
+                <thead>
+                  <tr><th>Nome</th><th>Documento</th><th>IE</th><th>Municipio/UF</th><th>E-mail</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let customer of customerRows">
+                    <td><strong>{{ customer.name }}</strong><br><span class="muted">{{ customer.tradeName || '-' }}</span></td>
+                    <td>{{ customerDocument(customer) }}</td>
+                    <td>{{ customer.stateRegistrationIndicator }}<br><span class="muted">{{ customer.stateRegistration || '-' }}</span></td>
+                    <td>{{ customer.cityName || '-' }}/{{ customer.uf || '-' }}</td>
+                    <td>{{ customer.email || '-' }}</td>
+                    <td>{{ customer.active ? 'Ativo' : 'Inativo' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
           <section *ngSwitchCase="'products'"><crud-title title="Produtos"></crud-title><button (click)="load('/products')">Carregar produtos</button><pre>{{ rows | json }}</pre></section>
           <section *ngSwitchCase="'taxRules'"><h1>Regras fiscais do produto</h1><p>Cadastre CFOP, CST/CSOSN, ICMS, IPI, PIS e COFINS por UF, operacao e regime.</p></section>
           <section *ngSwitchCase="'nfe'">
@@ -264,6 +415,9 @@ class AppComponent {
   mode: 'login' | 'register' = 'login';
   companies: any[] = [];
   rows: any[] = [];
+  customerRows: any[] = [];
+  showCustomerForm = false;
+  customerMessage = '';
   selectedCertificateFile: File | null = null;
   certificatePassword = '';
   certificateStatus: any = null;
@@ -286,6 +440,18 @@ class AppComponent {
     { code: '7', label: 'Contingencia SVC-RS' },
     { code: '9', label: 'Contingencia off-line NFC-e' }
   ];
+  personTypeOptions = [
+    { code: 'JURIDICA', label: 'Pessoa juridica' },
+    { code: 'FISICA', label: 'Pessoa fisica' },
+    { code: 'ESTRANGEIRO', label: 'Estrangeiro' }
+  ];
+  stateRegistrationIndicatorOptions = [
+    { code: 'CONTRIBUINTE_ICMS', label: 'Contribuinte ICMS' },
+    { code: 'ISENTO', label: 'Contribuinte isento' },
+    { code: 'NAO_CONTRIBUINTE', label: 'Nao contribuinte' }
+  ];
+  ufOptions = ['SP', 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SE', 'TO', 'EX'];
+  customerForm: any = this.emptyCustomer();
   nfeStep = 1;
   nfeForm: any = {
     natureOperation: '',
@@ -336,6 +502,120 @@ class AppComponent {
     const company = this.api.company();
     if (!company) return;
     this.api.get(`/api/companies/${company.id}${path}`).subscribe(r => this.rows = r);
+  }
+
+  emptyCustomer() {
+    return {
+      personType: 'JURIDICA',
+      cpf: '',
+      cnpj: '',
+      foreignId: '',
+      name: '',
+      tradeName: '',
+      stateRegistrationIndicator: 'NAO_CONTRIBUINTE',
+      stateRegistration: '',
+      municipalRegistration: '',
+      email: '',
+      phone: '',
+      zipCode: '',
+      street: '',
+      number: '',
+      complement: '',
+      district: '',
+      cityCodeIbge: '',
+      cityName: '',
+      uf: 'SP',
+      countryCode: '1058',
+      countryName: 'Brasil',
+      active: true
+    };
+  }
+
+  openNewCustomer() {
+    this.customerForm = this.emptyCustomer();
+    this.customerMessage = '';
+    this.showCustomerForm = true;
+  }
+
+  loadCustomers() {
+    const company = this.api.company();
+    if (!company) {
+      this.customerMessage = 'Selecione uma empresa antes de consultar clientes.';
+      return;
+    }
+    this.api.get(`/api/companies/${company.id}/customers`).subscribe({
+      next: customers => {
+        this.customerRows = customers;
+        this.customerMessage = customers.length ? '' : 'Nenhum cliente cadastrado para esta empresa.';
+      },
+      error: error => this.customerMessage = error.error?.message || 'Nao foi possivel carregar clientes.'
+    });
+  }
+
+  createCustomer() {
+    const company = this.api.company();
+    if (!company) {
+      this.customerMessage = 'Selecione uma empresa antes de cadastrar clientes.';
+      return;
+    }
+    const message = this.validateCustomerForm();
+    if (message) {
+      this.customerMessage = message;
+      return;
+    }
+    const payload = this.normalizeCustomerPayload();
+    this.api.post(`/api/companies/${company.id}/customers`, payload).subscribe({
+      next: customer => {
+        this.customerRows = [customer, ...this.customerRows.filter(row => row.id !== customer.id)];
+        this.customerForm = this.emptyCustomer();
+        this.showCustomerForm = false;
+        this.customerMessage = 'Cliente cadastrado com sucesso.';
+      },
+      error: error => this.customerMessage = error.error?.message || 'Nao foi possivel cadastrar o cliente.'
+    });
+  }
+
+  validateCustomerForm() {
+    const required = ['name', 'zipCode', 'street', 'number', 'district', 'cityCodeIbge', 'cityName', 'uf', 'countryCode', 'countryName'];
+    if (required.some(field => !String(this.customerForm[field] || '').trim())) {
+      return 'Preencha os campos obrigatorios do cliente.';
+    }
+    if (this.customerForm.personType === 'JURIDICA' && !this.digits(this.customerForm.cnpj)) {
+      return 'Informe o CNPJ do cliente pessoa juridica.';
+    }
+    if (this.customerForm.personType === 'FISICA' && !this.digits(this.customerForm.cpf)) {
+      return 'Informe o CPF do cliente pessoa fisica.';
+    }
+    if (this.customerForm.personType === 'ESTRANGEIRO' && !String(this.customerForm.foreignId || '').trim()) {
+      return 'Informe o ID estrangeiro do cliente.';
+    }
+    if (this.customerForm.stateRegistrationIndicator === 'CONTRIBUINTE_ICMS' && !String(this.customerForm.stateRegistration || '').trim()) {
+      return 'Informe a inscricao estadual para contribuinte ICMS.';
+    }
+    return '';
+  }
+
+  normalizeCustomerPayload() {
+    return {
+      ...this.customerForm,
+      cpf: this.customerForm.personType === 'FISICA' ? this.digits(this.customerForm.cpf) : '',
+      cnpj: this.customerForm.personType === 'JURIDICA' ? this.digits(this.customerForm.cnpj) : '',
+      foreignId: this.customerForm.personType === 'ESTRANGEIRO' ? String(this.customerForm.foreignId || '').trim() : '',
+      zipCode: this.digits(this.customerForm.zipCode),
+      cityCodeIbge: this.digits(this.customerForm.cityCodeIbge),
+      uf: String(this.customerForm.uf || '').toUpperCase(),
+      countryCode: this.digits(this.customerForm.countryCode) || this.customerForm.countryCode
+    };
+  }
+
+  customerDocument(customer: any) {
+    if (customer.personType === 'FISICA') return customer.cpf || '-';
+    if (customer.personType === 'ESTRANGEIRO') return customer.foreignId || '-';
+    return customer.cnpj || '-';
+  }
+
+  digits(value: any) {
+    return String(value || '').replace(/\D/g, '');
   }
 
   createNfe() {
