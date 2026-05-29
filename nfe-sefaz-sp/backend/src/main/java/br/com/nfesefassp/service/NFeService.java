@@ -112,13 +112,13 @@ public class NFeService {
 
     @Transactional
     public Map<String, Object> sign(UUID companyId, UUID id) {
-        get(companyId, id);
+        NFe nfe = get(companyId, id);
         String xml = jdbc.queryForObject("select xml_content from nfe_xml_documents where nfe_id = ? and document_type = 'XML_UNSIGNED' order by created_at desc limit 1", String.class, id);
-        String signed = signatureService.sign(xml);
-        String path = storageService.saveText("nfe/homologacao/" + companyId + "/" + id + "/signed.xml", signed);
-        jdbc.update("insert into nfe_xml_documents (nfe_id, document_type, file_path, xml_content) values (?, 'XML_SIGNED', ?, ?)", id, path, signed);
-        get(companyId, id).markStatus(NFeStatus.ASSINADA);
-        return Map.of("status", NFeStatus.ASSINADA.name(), "path", path);
+        NFeSignatureService.SignedXml signed = signatureService.sign(companyId, xml);
+        String path = storageService.saveText("nfe/homologacao/" + companyId + "/" + nfe.getAccessKey() + "/signed.xml", signed.xml());
+        jdbc.update("insert into nfe_xml_documents (nfe_id, document_type, file_path, xml_content) values (?, 'XML_SIGNED', ?, ?)", id, path, signed.xml());
+        nfe.markSigned(signed.digestValue());
+        return Map.of("status", NFeStatus.ASSINADA.name(), "path", path, "digestValue", signed.digestValue());
     }
 
     @Transactional

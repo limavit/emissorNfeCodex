@@ -42,4 +42,12 @@ public class StorageService {
             throw new IllegalStateException("Falha ao armazenar arquivo.", e);
         }
     }
+
+    public byte[] readBytes(String path) {
+        try {
+            return Files.readAllBytes(Path.of(path));
+        } catch (IOException e) {
+            throw new IllegalStateException("Falha ao ler arquivo armazenado.", e);
+        }
+    }
 }

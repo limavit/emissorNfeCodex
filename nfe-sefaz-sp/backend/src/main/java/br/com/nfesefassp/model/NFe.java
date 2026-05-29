@@ -43,6 +43,8 @@ public class NFe {
     private String sefazStatusCode;
     @Column(name = "sefaz_status_reason")
     private String sefazStatusReason;
+    @Column(name = "digest_value")
+    private String digestValue;
     @Column(name = "total_products")
     private BigDecimal totalProducts = BigDecimal.ZERO;
     @Column(name = "total_icms")
@@ -99,6 +101,12 @@ public class NFe {
         this.updatedAt = OffsetDateTime.now();
     }
 
+    public void markSigned(String digestValue) {
+        this.status = NFeStatus.ASSINADA.name();
+        this.digestValue = digestValue;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     public void applyTotals(br.com.nfesefassp.service.NFeCalculationService.Totals totals) {
         this.totalProducts = totals.products();
         this.totalFreight = totals.freight();
@@ -134,6 +142,7 @@ public class NFe {
     public String getStatus() { return status; }
     public String getSefazStatusCode() { return sefazStatusCode; }
     public String getSefazStatusReason() { return sefazStatusReason; }
+    public String getDigestValue() { return digestValue; }
     public BigDecimal getTotalProducts() { return totalProducts; }
     public BigDecimal getTotalIcms() { return totalIcms; }
     public BigDecimal getTotalIpi() { return totalIpi; }

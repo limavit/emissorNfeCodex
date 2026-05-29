@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.MessageDigest;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.OffsetDateTime;
@@ -140,6 +141,56 @@ public class CertificateService {
         auditService.register(CurrentUser.id(), companyId, "DELETE_CERTIFICATE", "DigitalCertificate", companyId.toString());
     }
 
+    public SigningCertificate loadSigningCertificate(UUID companyId) {
+        Map<String, Object> row = jdbc.query("""
+                select encrypted_file_path, encrypted_password, valid_until
+                from digital_certificates
+                where company_id = ? and active = true
+                order by created_at desc
+                limit 1
+                """, rs -> {
+            if (!rs.next()) {
+                return null;
+            }
+            return Map.of(
+                    "encrypted_file_path", rs.getString("encrypted_file_path"),
+                    "encrypted_password", rs.getString("encrypted_password"),
+                    "valid_until", rs.getObject("valid_until", OffsetDateTime.class));
+        }, companyId);
+        if (row == null) {
+            throw new IllegalStateException("Empresa sem certificado digital A1 ativo.");
+        }
+        OffsetDateTime validUntil = (OffsetDateTime) row.get("valid_until");
+        if (validUntil == null || validUntil.isBefore(OffsetDateTime.now())) {
+            throw new IllegalStateException("Certificado digital vencido.");
+        }
+
+        try {
+            byte[] pkcs12 = decryptBytes(storageService.readBytes(String.valueOf(row.get("encrypted_file_path"))));
+            char[] password = decryptString(String.valueOf(row.get("encrypted_password"))).toCharArray();
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            keyStore.load(new ByteArrayInputStream(pkcs12), password);
+
+            Enumeration<String> aliases = keyStore.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                if (!keyStore.isKeyEntry(alias)) {
+                    continue;
+                }
+                PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password);
+                X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
+                if (privateKey != null && certificate != null) {
+                    return new SigningCertificate(privateKey, certificate);
+                }
+            }
+            throw new IllegalStateException("Certificado A1 sem chave privada disponivel.");
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("Nao foi possivel carregar o certificado digital para assinatura.", e);
+        }
+    }
+
     private CertificateMetadata readPkcs12(byte[] rawFile, char[] password) throws Exception {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         keyStore.load(new ByteArrayInputStream(rawFile), password);
@@ -246,6 +297,24 @@ public class CertificateService {
         return Base64.getEncoder().encodeToString(encryptBytes(plain.getBytes(StandardCharsets.UTF_8)));
     }
 
+    private byte[] decryptBytes(byte[] encrypted) throws Exception {
+        if (encrypted.length <= GCM_IV_BYTES) {
+            throw new IllegalArgumentException("Conteudo criptografado invalido.");
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(encrypted);
+        byte[] iv = new byte[GCM_IV_BYTES];
+        buffer.get(iv);
+        byte[] cipherText = new byte[buffer.remaining()];
+        buffer.get(cipherText);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, encryptionKey, new GCMParameterSpec(GCM_TAG_BITS, iv));
+        return cipher.doFinal(cipherText);
+    }
+
+    private String decryptString(String encrypted) throws Exception {
+        return new String(decryptBytes(Base64.getDecoder().decode(encrypted)), StandardCharsets.UTF_8);
+    }
+
     private byte[] sha256(String value) {
         try {
             return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
@@ -260,5 +329,8 @@ public class CertificateService {
 
     private record CertificateMetadata(String subjectName, String issuerName, String serialNumber,
                                        OffsetDateTime validFrom, OffsetDateTime validUntil, String document) {
+    }
+
+    public record SigningCertificate(PrivateKey privateKey, X509Certificate certificate) {
     }
 }
